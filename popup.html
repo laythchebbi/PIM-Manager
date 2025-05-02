@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Azure PIM Helper</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/material-design-icons/4.0.0/font/MaterialIcons-Regular.woff2" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/material-icons/1.13.7/iconfont/material-icons.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    :root {
+      /* Fluent Design color palette */
+      --primary-color: #0078d4;
+      --primary-dark: #106ebe;
+      --primary-light: #deecf9;
+      --primary-lighter: #f3f9fd;
+      --secondary-color: #2b88d8;
+      --success-color: #107c10;
+      --success-light: #dff6dd;
+      --error-color: #a80000;
+      --error-light: #fde7e9;
+      --text-color: #323130;
+      --text-secondary: #605e5c;
+      --text-tertiary: #a19f9d;
+      --border-color: #edebe9;
+      --background-color: #faf9f8;
+      --card-background: #ffffff;
+      --divider-color: #e1dfdd;
+      --shadow-color: rgba(0, 0, 0, 0.1);
+      
+      /* Animation speeds */
+      --animation-fast: 100ms;
+      --animation-normal: 200ms;
+      --animation-slow: 300ms;
+      
+      /* Depths */
+      --depth-4: 0 1.6px 3.6px rgba(0, 0, 0, 0.13), 0 0.3px 0.9px rgba(0, 0, 0, 0.1);
+      --depth-8: 0 3.2px 7.2px rgba(0, 0, 0, 0.13), 0 0.6px 1.8px rgba(0, 0, 0, 0.1);
+      --depth-16: 0 6.4px 14.4px rgba(0, 0, 0, 0.13), 0 1.2px 3.6px rgba(0, 0, 0, 0.1);
+      --depth-64: 0 25.6px 57.6px rgba(0, 0, 0, 0.22), 0 4.8px 14.4px rgba(0, 0, 0, 0.18);
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif;
+    }
+    
+    body {
+      color: var(--text-color);
+      background-color: var(--background-color);
+      min-width: 320px;
+      min-height: 300px;
+      padding: 0;
+      margin: 0;
+    }
+    
+    .header {
+      background-color: var(--primary-color);
+      color: white;
+      padding: 16px 20px;
+      box-shadow: var(--depth-8);
+      position: relative;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+    }
+    
+    .header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin: 0;
+    }
+    
+    .header .logo {
+      display: flex;
+      align-items: center;
+    }
+    
+    .header .logo i {
+      margin-right: 12px;
+      font-size: 24px;
+    }
+    
+    .content {
+      background-color: var(--card-background);
+      border-radius: 8px;
+      margin: 16px;
+      padding: 20px;
+      box-shadow: var(--depth-4);
+      transition: box-shadow var(--animation-normal) ease-in-out;
+    }
+    
+    .content:hover {
+      box-shadow: var(--depth-8);
+    }
+    
+    .section-title {
+      color: var(--text-color);
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--divider-color);
+      letter-spacing: -0.01em;
+    }
+    
+    #eligList {
+      list-style-type: none;
+      padding: 0;
+    }
+    
+    .role-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border-color);
+      transition: background-color var(--animation-fast) ease;
+    }
+    
+    .role-item:hover {
+      background-color: var(--primary-lighter);
+    }
+    
+    .role-item:last-child {
+      border-bottom: none;
+    }
+    
+    .role-info {
+      flex-grow: 1;
+      padding-right: 16px;
+    }
+    
+    .role-name {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text-color);
+    }
+    
+    .role-scope {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 3px;
+    }
+    
+    /* Fluent Design button styles */
+    .activate-btn {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--animation-normal) ease;
+      box-shadow: var(--depth-4);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 110px;
+      height: 32px;
+    }
+    
+    .activate-btn .btn-text {
+      margin-right: 4px;
+      position: relative;
+      z-index: 2;
+    }
+    
+    .activate-btn .btn-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      width: 0;
+      transition: all var(--animation-normal) ease;
+      position: relative;
+      z-index: 2;
+    }
+    
+    .activate-btn .btn-icon i {
+      font-size: 16px;
+    }
+    
+    /* Acrylic material effect */
+    .activate-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.1);
+      opacity: 0;
+      transition: opacity var(--animation-normal) ease;
+    }
+    
+    .activate-btn:hover {
+      background-color: var(--primary-dark);
+      box-shadow: var(--depth-8);
+      transform: translateY(-1px);
+    }
+    
+    .activate-btn:hover::before {
+      opacity: 1;
+    }
+    
+    .activate-btn:active {
+      transform: translateY(1px);
+      box-shadow: var(--depth-4);
+      background-color: var(--primary-dark);
+    }
+    
+    .activate-btn:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--primary-light), var(--depth-4);
+    }
+    
+    /* Reveal highlight effect */
+    .activate-btn::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 5px;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.4);
+      opacity: 0;
+      border-radius: 100%;
+      transform: scale(1, 1) translate(-50%, -50%);
+      transform-origin: 50% 50%;
+      z-index: 1;
+    }
+    
+    .activate-btn:focus:not(:active)::after {
+      animation: reveal 0.6s ease-out;
+    }
+    
+    /* Button activating state */
+    .activate-btn.activating {
+      background-color: var(--success-color);
+    }
+    
+    .activate-btn.activating .btn-text {
+      margin-right: 8px;
+    }
+    
+    .activate-btn.activating .btn-icon {
+      opacity: 1;
+      width: 18px;
+    }
+    
+    /* Button activated state */
+    .activate-btn.activated {
+      background-color: var(--success-color);
+      padding-left: 12px;
+      padding-right: 12px;
+    }
+    
+    .activate-btn.activated .btn-text {
+      margin-right: 8px;
+    }
+    
+    .activate-btn.activated .btn-icon {
+      opacity: 1;
+      width: 18px;
+    }
+    
+    /* Button error state */
+    .activate-btn.error {
+      background-color: var(--error-color);
+    }
+    
+    @keyframes reveal {
+      0% {
+        transform: scale(0, 0);
+        opacity: 0.5;
+      }
+      20% {
+        transform: scale(25, 25);
+        opacity: 0.5;
+      }
+      100% {
+        opacity: 0;
+        transform: scale(40, 40);
+      }
+    }
+    
+    /* Status message styles */
+    #status {
+      margin-top: 20px;
+      padding: 14px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      display: none;
+      animation: fadeIn var(--animation-slow) ease-in;
+      align-items: center;
+      transition: all var(--animation-normal) ease;
+      box-shadow: var(--depth-4);
+    }
+    
+    #status::before {
+      font-family: 'Material Icons';
+      margin-right: 10px;
+      font-size: 18px;
+    }
+    
+    #status.success {
+      background-color: var(--success-light);
+      color: var(--success-color);
+      border-left: 4px solid var(--success-color);
+    }
+    
+    #status.success::before {
+      content: 'check_circle';
+    }
+    
+    #status.error {
+      background-color: var(--error-light);
+      color: var(--error-color);
+      border-left: 4px solid var(--error-color);
+    }
+    
+    #status.error::before {
+      content: 'error';
+    }
+    
+    /* Empty state with Fluent styling */
+    .empty-state {
+      text-align: center;
+      padding: 30px 0;
+      color: var(--text-secondary);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 150px;
+    }
+    
+    .empty-state i {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.7;
+      color: var(--text-tertiary);
+    }
+    
+    .empty-state p {
+      font-size: 15px;
+    }
+    
+    /* Loading state with Fluent styling */
+    @keyframes pulse {
+      0% { opacity: 0.6; }
+      50% { opacity: 0.9; }
+      100% { opacity: 0.6; }
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    .loading {
+      animation: pulse 1.8s infinite;
+      text-align: center;
+      padding: 30px 0;
+      color: var(--text-secondary);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 150px;
+    }
+    
+    .loading::before {
+      content: 'security';
+      font-family: 'Material Icons';
+      font-size: 40px;
+      margin-bottom: 16px;
+      color: var(--primary-color);
+    }
+    
+    /* Hide template */
+    template {
+      display: none;
+    }
+    
+    /* Material icons */
+    .material-icons {
+      font-family: 'Material Icons';
+      font-weight: normal;
+      font-style: normal;
+      font-size: 24px;
+      line-height: 1;
+      letter-spacing: normal;
+      text-transform: none;
+      display: inline-block;
+      white-space: nowrap;
+      word-wrap: normal;
+      direction: ltr;
+      -webkit-font-feature-settings: 'liga';
+      -webkit-font-smoothing: antialiased;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">
+      <i class="material-icons">security</i>
+      <h1>Azure PIM Helper</h1>
+    </div>
+  </div>
+  
+  <div class="content">
+    <h2 class="section-title">Eligible Roles</h2>
+    <ul id="eligList">
+      <!-- Will be filled by popup.js -->
+      <div class="loading">Loading eligible roles...</div>
+    </ul>
+    <div id="status"></div>
+  </div>
+
+  <!-- Sample template for reference (will be hidden) -->
+  <template id="role-template">
+    <li class="role-item">
+      <div class="role-info">
+        <div class="role-name"></div>
+        <div class="role-scope"></div>
+      </div>
+      <button class="activate-btn" data-role-id="">
+        <span class="btn-text">Activate</span>
+        <span class="btn-icon">
+          <i class="material-icons">check_circle</i>
+        </span>
+      </button>
+    </li>
+  </template>
+
+  <script>
+    // This script enhances the functionality of the buttons with Fluent design behaviors
+    document.addEventListener('DOMContentLoaded', function() {
+      // Clear loading state when DOM is ready (popup.js should handle this)
+      const eligList = document.getElementById('eligList');
+      
+      // This ensures button events are captured, including for dynamically added items
+      eligList.addEventListener('click', function(event) {
+        const target = event.target;
+        
+        // Find the closest button if a child element was clicked
+        const button = target.closest('.activate-btn');
+        
+        if (button) {
+          // Visual feedback for the button
+          button.classList.add('activating');
+          
+          // Get role ID from data attribute
+          const roleId = button.getAttribute('data-role-id');
+          
+          // Show a subtle ripple effect on click
+          const ripple = document.createElement('span');
+          ripple.style.position = 'absolute';
+          ripple.style.top = '50%';
+          ripple.style.left = '50%';
+          ripple.style.transform = 'translate(-50%, -50%)';
+          ripple.style.width = '100%';
+          ripple.style.height = '100%';
+          ripple.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+          ripple.style.borderRadius = '4px';
+          ripple.style.opacity = '0';
+          ripple.style.animation = 'fadeIn 0.1s ease-out forwards';
+          
+          button.appendChild(ripple);
+          setTimeout(() => {
+            ripple.style.opacity = '0';
+            ripple.style.transition = 'opacity 0.3s ease-out';
+            setTimeout(() => {
+              button.removeChild(ripple);
+            }, 300);
+          }, 200);
+          
+          // The button click event should be handled by your existing popup.js
+          console.log('Activating role:', roleId);
+          
+          // After activation attempt (success or error handled by popup.js)
+          setTimeout(() => {
+            button.classList.remove('activating');
+            
+            // You would replace this with your actual activation logic
+            // This is just for demonstration
+            const success = Math.random() > 0.3; // 70% success rate
+            
+            if (success) {
+              button.classList.add('activated');
+              button.querySelector('.btn-text').textContent = 'Activated';
+              button.querySelector('.btn-icon').style.opacity = '1';
+              button.querySelector('.btn-icon').style.width = '18px';
+              showSuccessStatus('Role activated successfully!');
+            } else {
+              button.classList.add('error');
+              setTimeout(() => {
+                button.classList.remove('error');
+              }, 1000);
+              showErrorStatus('Failed to activate role. Please try again.');
+            }
+          }, 1000);
+        }
+      });
+      
+      // Simulated data for demonstration
+      // In your actual implementation, this would be handled by popup.js
+      setTimeout(() => {
+        const roles = [
+          { id: 'role1', name: 'Global Administrator', scope: 'Directory' },
+          { id: 'role2', name: 'SharePoint Administrator', scope: 'Microsoft 365' },
+          { id: 'role3', name: 'Security Administrator', scope: 'Azure AD' }
+        ];
+        
+        if (roles.length > 0) {
+          eligList.innerHTML = '';
+          roles.forEach(role => {
+            const roleItem = createRoleItem(role);
+            eligList.appendChild(roleItem);
+          });
+        } else {
+          showEmptyState();
+        }
+      }, 1500);
+    });
+    
+    // Display empty state when no roles are found
+    function showEmptyState() {
+      const eligList = document.getElementById('eligList');
+      eligList.innerHTML = `
+        <div class="empty-state">
+          <i class="material-icons">assignment_ind</i>
+          <p>No eligible roles found</p>
+        </div>
+      `;
+    }
+    
+    // Enhanced function to create a role item
+    function createRoleItem(role) {
+      // Clone the template
+      const template = document.getElementById('role-template');
+      const li = template.content.cloneNode(true).querySelector('li');
+      
+      // Fill in the role information
+      li.querySelector('.role-name').textContent = role.name || 'Role Name';
+      li.querySelector('.role-scope').textContent = role.scope || 'Scope';
+      
+      // Set the role ID for the button
+      const button = li.querySelector('.activate-btn');
+      button.setAttribute('data-role-id', role.id || '');
+      
+      return li;
+    }
+    
+    // Status display functions
+    function showSuccessStatus(message) {
+      const status = document.getElementById('status');
+      status.className = 'success';
+      status.textContent = message || 'Role activated successfully!';
+      status.style.display = 'flex';
+    }
+    
+    function showErrorStatus(message) {
+      const status = document.getElementById('status');
+      status.className = 'error';
+      status.textContent = message || 'Failed to activate role.';
+      status.style.display = 'flex';
+    }
+    
+    function clearStatus() {
+      const status = document.getElementById('status');
+      status.style.display = 'none';
+      status.className = '';
+    }
+  </script>
+  
+  <script src="popup.js"></script>
+</body>
+</html>

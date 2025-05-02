@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Azure PIM Helper",
+  "version": "1.0",
+  "permissions": [
+    "identity",
+    "storage",
+    "scripting",
+    "activeTab"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "oauth2": {
+    "client_id": "4deb44bb-effe-44a1-b5e4-475ce2708d75",
+    "scopes": [
+      "openid",
+      "profile",
+      "RoleManagement.ReadWrite.Directory",
+      "PrivilegedAccess.ReadWrite.AzureResources"
+    ]
+  }
+}
