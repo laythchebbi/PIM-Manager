@@ -50,7 +50,9 @@
       "PrivilegedAccess.ReadWrite.AzureResources",
       "RoleAssignmentSchedule.ReadWrite.Directory",
       "RoleEligibilitySchedule.Read.Directory",
-      "Directory.Read.All"
+      "Directory.Read.All",
+      "Policy.Read.All",
+      "RoleManagementPolicy.Read.Directory"
     ]
   },
   

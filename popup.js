@@ -167,6 +167,8 @@ class AzurePIMHelper {
 
   // Role data conversion with justification support
   convertApiRole(apiRole, type = 'eligible') {
+    console.log(`convertApiRole called for "${apiRole.roleName}" with requiresJustification: ${apiRole.requiresJustification}`);
+    
     const getServiceFromRole = (roleName) => {
       const azureRoles = ['Owner', 'Contributor', 'Reader', 'Key Vault', 'Storage'];
       const entraRoles = ['Global Administrator', 'Security Administrator', 'User Administrator', 'Privileged Role Administrator'];
@@ -203,8 +205,11 @@ class AzurePIMHelper {
       roleDefinitionId: apiRole.roleDefinitionId,
       principalId: apiRole.principalId,
       directoryScopeId: apiRole.directoryScopeId,
+      // Use the actual Azure PIM policy setting
       requiresJustification: apiRole.requiresJustification || false
     };
+
+    console.log(`Final role object for "${role.name}": requiresJustification = ${role.requiresJustification} (from Azure PIM policy)`);
 
     if (type === 'eligible') {
       role.maxDuration = parseDuration(apiRole.scheduleInfo?.expiration?.duration);
@@ -251,8 +256,17 @@ class AzurePIMHelper {
       console.log('Converting role data...');
       const convertStartTime = performance.now();
       
-      const eligible = (eligibleResponse.data?.value || []).map(role => this.convertApiRole(role, 'eligible'));
+      console.log('Raw eligible roles data:', eligibleResponse.data?.value);
+      console.log('Raw active roles data:', activeResponse.data?.value);
+      
+      const eligible = (eligibleResponse.data?.value || []).map(role => {
+        const convertedRole = this.convertApiRole(role, 'eligible');
+        console.log(`Converting role "${convertedRole.name}": original requiresJustification = ${role.requiresJustification}, converted = ${convertedRole.requiresJustification}`);
+        return convertedRole;
+      });
       const active = (activeResponse.data?.value || []).map(role => this.convertApiRole(role, 'active'));
+      
+      console.log('Converted eligible roles:', eligible.map(r => ({ name: r.name, requiresJustification: r.requiresJustification })));
       
       const convertEndTime = performance.now();
       console.log(`Role conversion took ${(convertEndTime - convertStartTime).toFixed(2)}ms`);
@@ -556,6 +570,9 @@ class AzurePIMHelper {
   getRoleItemHTML(role, type) {
     const isActivating = this.activatingRoles.has(role.id);
     const isExtending = this.extendingRoles.has(role.id);
+    
+    // Debug logging for justification
+    console.log(`Rendering role "${role.name}": requiresJustification = ${role.requiresJustification}`);
     
     return `
       <div class="role-item">

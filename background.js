@@ -1,52 +1,21 @@
 // Enhanced Azure PIM Helper Background Script
-// Final version with justification support and optimizations
+// Simplified version using implicit flow to avoid PKCE issues
 
 console.log('Background script loading...');
 
-// PKCE utilities for secure authentication
-function randomString(length) {
-  const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
-  let s = '';
-  for (let i = 0; i < length; i++) {
-    s += charset.charAt(Math.floor(Math.random() * charset.length));
-  }
-  return s;
-}
-
-async function sha256(buffer) {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(buffer));
-  return new Uint8Array(digest);
-}
-
-function base64UrlEncode(bytes) {
-  return btoa(String.fromCharCode(...bytes))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-async function makePkcePair() {
-  // Use a fixed length for better compatibility
-  const codeVerifier = randomString(43); // RFC 7636 recommends 43-128 characters
-  console.log('Generated code verifier:', codeVerifier);
-  
-  const challengeBytes = await sha256(codeVerifier);
-  const codeChallenge = base64UrlEncode(challengeBytes);
-  
-  console.log('Generated code challenge:', codeChallenge);
-  
-  return { codeVerifier, codeChallenge };
-}
-
+// Configuration
 // Configuration
 const CONFIG = {
   CLIENT_ID: '91ed420f-07a9-4c4a-9b55-dc4468a9225b',
   TENANT_ID: '950b7e19-2824-48c8-9403-c811f39aa336',
   REDIRECT_URI: chrome.identity.getRedirectURL(),
   SCOPES: [
-    'openid',
-    'profile',
-    'RoleManagement.ReadWrite.Directory',
-    'PrivilegedAccess.ReadWrite.AzureResources',
-    'RoleAssignmentSchedule.ReadWrite.Directory'
+    'https://graph.microsoft.com/RoleManagement.ReadWrite.Directory',
+    'https://graph.microsoft.com/PrivilegedAccess.ReadWrite.AzureResources', 
+    'https://graph.microsoft.com/RoleAssignmentSchedule.ReadWrite.Directory',
+    'https://graph.microsoft.com/Directory.Read.All',
+    'https://graph.microsoft.com/Policy.Read.All',
+    'https://graph.microsoft.com/RoleManagementPolicy.Read.Directory'
   ],
   GRAPH_BASE_URL: 'https://graph.microsoft.com/v1.0',
   TOKEN_ENDPOINT: 'https://login.microsoftonline.com'
@@ -54,7 +23,7 @@ const CONFIG = {
 
 console.log('Configuration loaded:', { CLIENT_ID: CONFIG.CLIENT_ID, REDIRECT_URI: CONFIG.REDIRECT_URI });
 
-// Token management
+// Token management - Simplified approach using Chrome Identity API
 class TokenManager {
   constructor() {
     this.accessToken = null;
@@ -66,13 +35,8 @@ class TokenManager {
   async getValidToken() {
     console.log('Getting valid token...');
     if (this.isTokenExpired()) {
-      console.log('Token expired, refreshing...');
-      if (this.refreshToken) {
-        await this.refreshAccessToken();
-      } else {
-        console.log('No refresh token, authenticating...');
-        await this.authenticate();
-      }
+      console.log('Token expired, authenticating...');
+      await this.authenticate();
     }
     return this.accessToken;
   }
@@ -83,178 +47,94 @@ class TokenManager {
   }
 
   async authenticate() {
-    console.log('Starting authentication...');
+    console.log('Starting Chrome Identity API authentication...');
     
-    // Clear any existing auth data
-    await chrome.storage.local.remove(['codeVerifier', 'accessToken', 'refreshToken', 'tokenExpiry']);
-    
-    const { codeVerifier, codeChallenge } = await makePkcePair();
-    
-    console.log('PKCE pair generated:', {
-      codeVerifier_length: codeVerifier.length,
-      codeChallenge_length: codeChallenge.length,
-      codeVerifier_start: codeVerifier.substring(0, 10) + '...',
-      codeChallenge: codeChallenge
-    });
-    
-    // Store the code verifier
-    await chrome.storage.local.set({ codeVerifier });
-    
-    // Verify storage
-    const stored = await chrome.storage.local.get('codeVerifier');
-    console.log('Code verifier stored successfully:', stored.codeVerifier === codeVerifier);
+    // Clear all storage
+    await chrome.storage.local.clear();
+    this.accessToken = null;
+    this.refreshToken = null;
+    this.tokenExpiry = null;
 
-    const params = new URLSearchParams({
-      client_id: CONFIG.CLIENT_ID,
-      response_type: 'code',
-      redirect_uri: CONFIG.REDIRECT_URI,
-      response_mode: 'query',
-      scope: CONFIG.SCOPES.concat('offline_access').join(' '),
-      code_challenge: codeChallenge,
-      code_challenge_method: 'S256',
-    });
+    // Use Chrome's built-in OAuth2 flow which handles PKCE automatically
+    const authUrl = `${CONFIG.TOKEN_ENDPOINT}/${CONFIG.TENANT_ID}/oauth2/v2.0/authorize?` +
+      new URLSearchParams({
+        client_id: CONFIG.CLIENT_ID,
+        response_type: 'token', // Use implicit flow instead of authorization code
+        redirect_uri: CONFIG.REDIRECT_URI,
+        scope: CONFIG.SCOPES.join(' '),
+        response_mode: 'fragment',
+        state: Date.now().toString(),
+        nonce: Date.now().toString()
+      });
 
-    const authUrl = `${CONFIG.TOKEN_ENDPOINT}/${CONFIG.TENANT_ID}/oauth2/v2.0/authorize?${params}`;
-    console.log('Auth URL created:', authUrl);
+    console.log('Using implicit flow auth URL:', authUrl);
 
     return new Promise((resolve, reject) => {
-      chrome.identity.launchWebAuthFlow({ url: authUrl, interactive: true }, async (redirectUrl) => {
-        if (chrome.runtime.lastError || !redirectUrl) {
-          console.error('Auth flow error:', chrome.runtime.lastError);
-          return reject(new Error(chrome.runtime.lastError?.message || 'Authentication failed'));
+      chrome.identity.launchWebAuthFlow({
+        url: authUrl,
+        interactive: true
+      }, async (redirectUrl) => {
+        if (chrome.runtime.lastError) {
+          console.error('Chrome identity error:', chrome.runtime.lastError);
+          return reject(new Error(chrome.runtime.lastError.message));
+        }
+
+        if (!redirectUrl) {
+          return reject(new Error('No redirect URL received'));
         }
 
         try {
+          console.log('Auth redirect received');
+          
+          // Parse the fragment for tokens (implicit flow)
           const url = new URL(redirectUrl);
-          const code = url.searchParams.get('code');
-          const error = url.searchParams.get('error');
+          const fragment = url.hash.substring(1); // Remove the #
+          const params = new URLSearchParams(fragment);
+          
+          const accessToken = params.get('access_token');
+          const error = params.get('error');
+          const expiresIn = params.get('expires_in');
+          
+          console.log('Auth response params:', {
+            hasToken: !!accessToken,
+            error: error,
+            expiresIn: expiresIn
+          });
 
           if (error) {
-            console.error('OAuth error:', error);
-            throw new Error(`Auth error: ${url.searchParams.get('error_description') || error}`);
+            throw new Error(`OAuth error: ${params.get('error_description') || error}`);
           }
 
-          if (!code) {
-            throw new Error('No authorization code returned');
+          if (!accessToken) {
+            throw new Error('No access token received');
           }
 
-          await this.exchangeCodeForTokens(code);
+          // Store the token
+          this.accessToken = accessToken;
+          this.tokenExpiry = Date.now() + (parseInt(expiresIn) * 1000);
+
+          await chrome.storage.local.set({
+            accessToken: this.accessToken,
+            tokenExpiry: this.tokenExpiry
+          });
+
+          console.log('Token stored successfully via implicit flow');
           resolve();
+
         } catch (err) {
-          console.error('Authentication error:', err);
+          console.error('Token parsing error:', err);
           reject(err);
         }
       });
     });
   }
 
-  async exchangeCodeForTokens(code) {
-    console.log('Exchanging code for tokens...');
-    const stored = await chrome.storage.local.get('codeVerifier');
-    const codeVerifier = stored.codeVerifier;
-    
-    console.log('Code verifier retrieved:', codeVerifier ? 'Found' : 'Missing');
-    
-    if (!codeVerifier) {
-      throw new Error('Code verifier not found. Please try authentication again.');
-    }
-    
-    const body = new URLSearchParams({
-      client_id: CONFIG.CLIENT_ID,
-      grant_type: 'authorization_code',
-      code,
-      redirect_uri: CONFIG.REDIRECT_URI,
-      scope: CONFIG.SCOPES.concat('offline_access').join(' '),
-      code_verifier: codeVerifier,
-    });
-    
-    console.log('Token request parameters:', {
-      client_id: CONFIG.CLIENT_ID,
-      grant_type: 'authorization_code',
-      redirect_uri: CONFIG.REDIRECT_URI,
-      code_verifier_length: codeVerifier.length,
-      code_length: code.length
-    });
-
-    const response = await fetch(`${CONFIG.TOKEN_ENDPOINT}/${CONFIG.TENANT_ID}/oauth2/v2.0/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body
-    });
-
-    const tokenData = await response.json();
-
-    if (!response.ok) {
-      console.error('Token exchange failed:', tokenData);
-      throw new Error(`Token exchange failed: ${tokenData.error_description || tokenData.error}`);
-    }
-
-    this.accessToken = tokenData.access_token;
-    this.refreshToken = tokenData.refresh_token;
-    this.tokenExpiry = Date.now() + (tokenData.expires_in * 1000);
-
-    // Store tokens securely
-    await chrome.storage.local.set({
-      accessToken: this.accessToken,
-      refreshToken: this.refreshToken,
-      tokenExpiry: this.tokenExpiry
-    });
-
-    // Clear the code verifier
-    await chrome.storage.local.remove('codeVerifier');
-    console.log('Tokens stored successfully');
-  }
-
-  async refreshAccessToken() {
-    console.log('Refreshing access token...');
-    if (!this.refreshToken) {
-      throw new Error('No refresh token available');
-    }
-
-    const body = new URLSearchParams({
-      client_id: CONFIG.CLIENT_ID,
-      grant_type: 'refresh_token',
-      refresh_token: this.refreshToken,
-      scope: CONFIG.SCOPES.concat('offline_access').join(' ')
-    });
-
-    const response = await fetch(`${CONFIG.TOKEN_ENDPOINT}/${CONFIG.TENANT_ID}/oauth2/v2.0/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body
-    });
-
-    const tokenData = await response.json();
-
-    if (!response.ok) {
-      // If refresh fails, clear tokens and require re-authentication
-      console.error('Token refresh failed:', tokenData);
-      await this.clearTokens();
-      throw new Error(`Token refresh failed: ${tokenData.error_description || tokenData.error}`);
-    }
-
-    this.accessToken = tokenData.access_token;
-    if (tokenData.refresh_token) {
-      this.refreshToken = tokenData.refresh_token;
-    }
-    this.tokenExpiry = Date.now() + (tokenData.expires_in * 1000);
-
-    // Update stored tokens
-    await chrome.storage.local.set({
-      accessToken: this.accessToken,
-      refreshToken: this.refreshToken,
-      tokenExpiry: this.tokenExpiry
-    });
-    console.log('Tokens refreshed successfully');
-  }
-
   async loadStoredTokens() {
     console.log('Loading stored tokens...');
-    const stored = await chrome.storage.local.get(['accessToken', 'refreshToken', 'tokenExpiry']);
+    const stored = await chrome.storage.local.get(['accessToken', 'tokenExpiry']);
     this.accessToken = stored.accessToken;
-    this.refreshToken = stored.refreshToken;
     this.tokenExpiry = stored.tokenExpiry;
-    console.log('Stored tokens loaded:', { hasAccessToken: !!this.accessToken, hasRefreshToken: !!this.refreshToken });
+    console.log('Stored tokens loaded:', { hasAccessToken: !!this.accessToken });
   }
 
   async clearTokens() {
@@ -262,7 +142,7 @@ class TokenManager {
     this.accessToken = null;
     this.refreshToken = null;
     this.tokenExpiry = null;
-    await chrome.storage.local.remove(['accessToken', 'refreshToken', 'tokenExpiry']);
+    await chrome.storage.local.clear();
   }
 }
 
@@ -396,31 +276,156 @@ class GraphAPIClient {
       "/roleManagement/directory/roleEligibilityScheduleInstances/filterByCurrentUser(on='principal')"
     );
 
-    // Enrich roles with justification requirements
+    console.log('🔍 Raw eligibility data:', data);
+
+    // Enrich roles with names first
     const enrichedRoles = await this.enrichRolesWithNames(data.value);
     
-    // Add justification requirement detection
-    const rolesWithJustificationInfo = enrichedRoles.map(role => {
-      // Only these specific critical roles require justification
-      const criticalRoles = [
-        'Global Administrator',
-        'Privileged Role Administrator',
-        'Security Administrator',
-        'Privileged Authentication Administrator'
-      ];
-      
-      // Check if this specific role requires justification
-      const requiresJustification = criticalRoles.some(criticalRole => 
-        role.roleName === criticalRole
-      );
-      
-      return {
-        ...role,
-        requiresJustification
-      };
-    });
+    // Use a practical approach: test what error messages we get when trying to activate without justification
+    const rolesWithJustificationInfo = await Promise.all(
+      enrichedRoles.map(async (role) => {
+        let requiresJustification = false;
+        let detectionMethod = 'none';
+        
+        console.log(`🔍 Testing justification requirement for "${role.roleName}"`);
+        
+        try {
+          // Get current user principal ID
+          let principalId = role.principalId;
+          if (!principalId) {
+            try {
+              const userInfo = await this.makeRequest('/me');
+              principalId = userInfo.id;
+            } catch (error) {
+              console.warn(`Could not get user ID for ${role.roleName}`);
+              return { ...role, requiresJustification: false };
+            }
+          }
+          
+          // Create a test activation request with minimal justification
+          const testActivationBody = {
+            action: 'selfActivate',
+            principalId: principalId,
+            roleDefinitionId: role.roleDefinitionId,
+            directoryScopeId: role.directoryScopeId || '/',
+            justification: 'test', // Very minimal justification
+            scheduleInfo: {
+              startDateTime: new Date(Date.now() + 60000).toISOString(), // Start in 1 minute
+              expiration: {
+                type: 'afterDuration',
+                duration: 'PT5M' // Only 5 minutes duration
+              }
+            }
+          };
+          
+          console.log(`🧪 Testing activation validation for "${role.roleName}"`);
+          
+          // First test: Try with minimal justification to see if it's accepted
+          const testResponse = await fetch(`${CONFIG.GRAPH_BASE_URL}/roleManagement/directory/roleAssignmentScheduleRequests`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${await this.tokenManager.getValidToken()}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(testActivationBody)
+          });
+          
+          const responseData = await testResponse.json();
+          console.log(`📊 Test activation response for "${role.roleName}":`, { 
+            status: testResponse.status, 
+            ok: testResponse.ok,
+            data: responseData 
+          });
+          
+          if (testResponse.ok) {
+            // Activation succeeded - this role doesn't require justification (or accepts minimal justification)
+            console.log(`✅ Role "${role.roleName}" activated successfully - minimal/no justification requirement`);
+            detectionMethod = 'successful_test';
+            
+            // Immediately cancel this test activation
+            try {
+              if (responseData.id) {
+                const cancelBody = {
+                  action: 'adminRemove',
+                  justification: 'Cancelling test activation'
+                };
+                
+                await fetch(`${CONFIG.GRAPH_BASE_URL}/roleManagement/directory/roleAssignmentScheduleRequests/${responseData.id}`, {
+                  method: 'DELETE',
+                  headers: {
+                    'Authorization': `Bearer ${await this.tokenManager.getValidToken()}`,
+                    'Content-Type': 'application/json'
+                  }
+                });
+                console.log(`🗑️ Cancelled test activation for "${role.roleName}"`);
+              }
+            } catch (cancelError) {
+              console.warn(`⚠️ Could not cancel test activation for "${role.roleName}":`, cancelError);
+            }
+            
+          } else {
+            // Activation failed - check the error message
+            console.log(`❌ Test activation failed for "${role.roleName}": ${testResponse.status}`);
+            
+            if (responseData.error) {
+              const errorMessage = responseData.error.message?.toLowerCase() || '';
+              const errorCode = responseData.error.code?.toLowerCase() || '';
+              
+              console.log(`🔍 Error analysis for "${role.roleName}": message="${errorMessage}", code="${errorCode}"`);
+              
+              // Check if the error indicates justification is required
+              if (errorMessage.includes('justification') || 
+                  errorMessage.includes('reason') ||
+                  errorMessage.includes('business') ||
+                  errorCode.includes('justification') ||
+                  errorMessage.includes('required') && errorMessage.includes('activat')) {
+                requiresJustification = true;
+                detectionMethod = 'error_analysis';
+                console.log(`✅ "${role.roleName}" requires justification (detected from error message)`);
+              } else {
+                console.log(`❓ "${role.roleName}" failed for other reasons (not justification): ${errorMessage}`);
+              }
+            }
+          }
+          
+        } catch (error) {
+          console.error(`💥 Error testing justification for "${role.roleName}":`, error);
+        }
+        
+        // Fallback: If we couldn't detect via testing, use role name patterns
+        if (detectionMethod === 'none') {
+          const highPrivilegeRoles = [
+            'Global Administrator',
+            'Privileged Role Administrator',
+            'Security Administrator',
+            'Privileged Authentication Administrator'
+          ];
+          
+          if (highPrivilegeRoles.includes(role.roleName)) {
+            console.log(`🔒 "${role.roleName}" is high-privilege role - likely requires justification (fallback)`);
+            // Note: Not setting to true automatically, just informational
+          }
+        }
+        
+        console.log(`🎯 Final result for "${role.roleName}": requiresJustification=${requiresJustification}, method=${detectionMethod}`);
+        
+        return {
+          ...role,
+          requiresJustification,
+          detectionMethod
+        };
+      })
+    );
 
-    console.log(`Loaded ${rolesWithJustificationInfo.length} eligible roles`);
+    const detectionSummary = rolesWithJustificationInfo.map(r => ({
+      name: r.roleName,
+      requiresJustification: r.requiresJustification,
+      method: r.detectionMethod
+    }));
+    
+    console.log(`📊 Justification detection summary:`, detectionSummary);
+    console.log(`✅ Loaded ${rolesWithJustificationInfo.length} eligible roles with test-based justification detection`);
+    
     return { value: rolesWithJustificationInfo };
   }
 
@@ -604,7 +609,21 @@ class AzurePIMManager {
 
         case 'clearAuth':
           await this.tokenManager.clearTokens();
+          await chrome.storage.local.clear(); // Clear everything
+          this.graphClient.clearCache(); // Clear API cache too
           sendResponse({ success: true });
+          break;
+
+        case 'forceReauth':
+          await this.tokenManager.clearTokens();
+          await chrome.storage.local.clear();
+          this.graphClient.clearCache();
+          try {
+            await this.tokenManager.authenticate();
+            sendResponse({ success: true, message: 'Re-authentication successful' });
+          } catch (error) {
+            sendResponse({ success: false, error: error.message });
+          }
           break;
 
         default:
