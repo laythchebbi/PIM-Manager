@@ -1,5 +1,5 @@
 // Enhanced Azure PIM Helper Background Script
-// Fixed for Manifest V3 compatibility
+// Final version with justification support and optimizations
 
 console.log('Background script loading...');
 
@@ -396,10 +396,32 @@ class GraphAPIClient {
       "/roleManagement/directory/roleEligibilityScheduleInstances/filterByCurrentUser(on='principal')"
     );
 
+    // Enrich roles with justification requirements
     const enrichedRoles = await this.enrichRolesWithNames(data.value);
-    console.log(`Loaded ${enrichedRoles.length} eligible roles`);
+    
+    // Add justification requirement detection
+    const rolesWithJustificationInfo = enrichedRoles.map(role => {
+      // Only these specific critical roles require justification
+      const criticalRoles = [
+        'Global Administrator',
+        'Privileged Role Administrator',
+        'Security Administrator',
+        'Privileged Authentication Administrator'
+      ];
+      
+      // Check if this specific role requires justification
+      const requiresJustification = criticalRoles.some(criticalRole => 
+        role.roleName === criticalRole
+      );
+      
+      return {
+        ...role,
+        requiresJustification
+      };
+    });
 
-    return { value: enrichedRoles };
+    console.log(`Loaded ${rolesWithJustificationInfo.length} eligible roles`);
+    return { value: rolesWithJustificationInfo };
   }
 
   async listActiveRoles() {
@@ -437,7 +459,7 @@ class GraphAPIClient {
     return { value: normalizedRoles };
   }
 
-  async activateRole(eligibility, duration = 'PT1H', justification = 'Temporary access required') {
+  async activateRole(eligibility, duration = 'PT1H', justification = 'Role activation requested via PIM Helper extension') {
     console.log('Activating role with eligibility:', eligibility);
     
     let principalId = eligibility.principalId;

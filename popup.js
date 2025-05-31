@@ -1,5 +1,5 @@
 // Azure PIM Helper - Chrome Extension Popup
-// Fixed version with background script recovery
+// Final optimized version with justification support
 
 class AzurePIMHelper {
   constructor() {
@@ -165,7 +165,7 @@ class AzurePIMHelper {
     icon.textContent = icons[theme] || '☀️';
   }
 
-  // Role data conversion
+  // Role data conversion with justification support
   convertApiRole(apiRole, type = 'eligible') {
     const getServiceFromRole = (roleName) => {
       const azureRoles = ['Owner', 'Contributor', 'Reader', 'Key Vault', 'Storage'];
@@ -202,7 +202,8 @@ class AzurePIMHelper {
       description: `Manage ${apiRole.roleName.replace(' Administrator', '').toLowerCase()} settings and permissions`,
       roleDefinitionId: apiRole.roleDefinitionId,
       principalId: apiRole.principalId,
-      directoryScopeId: apiRole.directoryScopeId
+      directoryScopeId: apiRole.directoryScopeId,
+      requiresJustification: apiRole.requiresJustification || false
     };
 
     if (type === 'eligible') {
@@ -313,31 +314,40 @@ class AzurePIMHelper {
     }
   }
 
+  // Simplified role activation without modal
   async handleActivateRole(roleId, roleName) {
+    const role = this.eligibleRoles.find(r => r.id === roleId);
+    if (!role) {
+      this.showStatus('error', 'Role not found');
+      return;
+    }
+
     this.activatingRoles.add(roleId);
     this.updateRoleButton(roleId, 'activating');
     this.clearStatus();
 
     try {
-      const role = this.eligibleRoles.find(r => r.id === roleId);
-      if (!role) throw new Error('Role not found');
-
       console.log('Activating role:', role);
 
-      // Prepare the eligibility object with correct structure
       const eligibilityData = {
         roleDefinitionId: role.roleDefinitionId,
         principalId: role.principalId,
-        directoryScopeId: role.directoryScopeId || '/'
+        directoryScopeId: role.directoryScopeId || '/',
+        requiresJustification: role.requiresJustification
       };
 
       console.log('Eligibility data:', eligibilityData);
 
+      // Use appropriate justification based on role requirements
+      const justification = role.requiresJustification 
+        ? 'Administrative task requiring elevated privileges - Role activation via PIM Helper extension'
+        : 'Role activation requested via PIM Helper extension';
+
       const response = await this.sendMessage({
         action: 'activateRole',
         eligibility: eligibilityData,
-        duration: 'PT1H', // 1 hour
-        justification: 'Role activation requested via PIM Helper extension'
+        duration: 'PT1H',
+        justification: justification
       });
 
       console.log('Activation response:', response);
@@ -347,8 +357,6 @@ class AzurePIMHelper {
       }
 
       this.showStatus('success', `Successfully activated ${roleName}`);
-      
-      // Wait a bit longer before refreshing to allow Azure to process
       setTimeout(() => this.loadRoles(), 3000);
 
     } catch (error) {
@@ -544,6 +552,7 @@ class AzurePIMHelper {
     container.appendChild(fragment);
   }
 
+  // Role item HTML with justification indicators
   getRoleItemHTML(role, type) {
     const isActivating = this.activatingRoles.has(role.id);
     const isExtending = this.extendingRoles.has(role.id);
@@ -556,6 +565,7 @@ class AzurePIMHelper {
             <div class="role-badges">
               <span class="badge badge-${role.type.toLowerCase()}">${role.type}</span>
               <span class="service-tag service-${role.service.replace(' ', '').toLowerCase()}">${role.service}</span>
+              ${role.requiresJustification ? '<span class="justification-tag">📝 Justification Required</span>' : ''}
             </div>
           </div>
           <p class="role-scope">${role.scope}</p>
@@ -563,6 +573,10 @@ class AzurePIMHelper {
           
           ${type === 'eligible' && role.maxDuration ? `
             <p class="role-duration">Max duration: ${role.maxDuration}</p>
+          ` : ''}
+          
+          ${role.requiresJustification && type === 'eligible' ? `
+            <p class="justification-note">⚠️ This role requires business justification for activation</p>
           ` : ''}
           
           ${(type === 'active' || type === 'expiring') && role.activatedAt ? `
@@ -581,6 +595,7 @@ class AzurePIMHelper {
             <button class="btn btn-primary activate-btn" 
                     data-role-id="${role.id}" 
                     data-role-name="${role.name}"
+                    data-requires-justification="${role.requiresJustification || false}"
                     ${isActivating ? 'disabled' : ''}>
               ${isActivating ? '⏳ Activating' : 'Activate'}
             </button>
