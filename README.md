@@ -112,7 +112,7 @@ The extension supports both **English** and **French** with seamless switching:
 ### 🌟 Main Interface
 *Elegant role management with modern design*
 
-![Main Interface](https://via.placeholder.com/520x400/0078d4/ffffff?text=Main+Interface)
+![Main Interface](images/img2.png)
 
 ### 🌐 Multi-Language Support ⭐ *NEW!*
 *Seamless language switching with flag icons*
