@@ -117,22 +117,22 @@ The extension supports both **English** and **French** with seamless switching:
 ### 🌐 Multi-Language Support ⭐ *NEW!*
 *Seamless language switching with flag icons*
 
-![Language Support](https://via.placeholder.com/520x300/00bcf2/ffffff?text=🇺🇸+🇫🇷+Language+Support)
+![Language Support](images/img3.png)
 
 ### 📝 Intelligent Justification Detection ⭐ *NEW!*
 *Real-time Azure PIM policy analysis*
 
-![Justification Detection](https://via.placeholder.com/520x300/6366f1/ffffff?text=📝+Smart+Justification+Detection)
+![Justification Detection](images/img1.png)
 
 ### 🔐 Role Activation
 *One-click activation with justification support*
 
-![Role Activation](https://via.placeholder.com/520x300/00bcf2/ffffff?text=Role+Activation)
+![Role Activation](images/img4.png)
 
 ### 🌙 Dark Theme
 *Beautiful dark mode for low-light environments*
 
-![Dark Theme](https://via.placeholder.com/520x400/1e293b/ffffff?text=Dark+Theme)
+![Dark Theme](images/img1.png)
 
 </div>
 
