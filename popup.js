@@ -57,17 +57,22 @@ class AzurePIMHelper {
   }
 
   // Chrome extension messaging
-  async sendMessage(message) {
-    return new Promise((resolve) => {
-      chrome.runtime.sendMessage(message, (response) => {
-        if (chrome.runtime.lastError) {
-          resolve({ success: false, error: chrome.runtime.lastError.message });
-        } else {
-          resolve(response);
-        }
-      });
+async sendMessage(message) {
+  console.log('Sending message to background:', message);
+  
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage(message, (response) => {
+      console.log('Received response from background:', response);
+      
+      if (chrome.runtime.lastError) {
+        console.error('Runtime error:', chrome.runtime.lastError);
+        resolve({ success: false, error: chrome.runtime.lastError.message });
+      } else {
+        resolve(response);
+      }
     });
-  }
+  });
+}
 
   // Theme management
   applyTheme(theme) {
@@ -207,39 +212,53 @@ class AzurePIMHelper {
     this.updateRefreshButton();
   }
 
-  async handleActivateRole(roleId, roleName) {
-    this.activatingRoles.add(roleId);
-    this.updateRoleButton(roleId, 'activating');
-    this.clearStatus();
+// Updated method in your popup.js handleActivateRole function:
+async handleActivateRole(roleId, roleName) {
+  this.activatingRoles.add(roleId);
+  this.updateRoleButton(roleId, 'activating');
+  this.clearStatus();
 
-    try {
-      const role = this.eligibleRoles.find(r => r.id === roleId);
-      if (!role) throw new Error('Role not found');
+  try {
+    const role = this.eligibleRoles.find(r => r.id === roleId);
+    if (!role) throw new Error('Role not found');
 
-      const response = await this.sendMessage({
-        action: 'activateRole',
-        eligibility: {
-          id: role.id,
-          roleDefinitionId: role.roleDefinitionId,
-          principalId: role.principalId,
-          directoryScopeId: role.directoryScopeId
-        }
-      });
+    console.log('Activating role:', role);
 
-      if (!response.success) {
-        throw new Error(response.error || 'Activation failed');
-      }
+    // Prepare the eligibility object with correct structure
+    const eligibilityData = {
+      roleDefinitionId: role.roleDefinitionId,
+      principalId: role.principalId,
+      directoryScopeId: role.directoryScopeId || '/'
+    };
 
-      this.showStatus('success', `Successfully activated ${roleName}`);
-      setTimeout(() => this.loadRoles(), 1000);
+    console.log('Eligibility data:', eligibilityData);
 
-    } catch (error) {
-      this.showStatus('error', `Failed to activate ${roleName}: ${error.message}`);
-    } finally {
-      this.activatingRoles.delete(roleId);
-      this.updateRoleButton(roleId, 'normal');
+    const response = await this.sendMessage({
+      action: 'activateRole',
+      eligibility: eligibilityData,
+      duration: 'PT1H', // 1 hour
+      justification: 'Role activation requested via PIM Helper extension'
+    });
+
+    console.log('Activation response:', response);
+
+    if (!response.success) {
+      throw new Error(response.error || 'Activation failed');
     }
+
+    this.showStatus('success', `Successfully activated ${roleName}`);
+    
+    // Wait a bit longer before refreshing to allow Azure to process
+    setTimeout(() => this.loadRoles(), 3000);
+
+  } catch (error) {
+    console.error('Activation error:', error);
+    this.showStatus('error', `Failed to activate ${roleName}: ${error.message}`);
+  } finally {
+    this.activatingRoles.delete(roleId);
+    this.updateRoleButton(roleId, 'normal');
   }
+}
 
   async handleExtendRole(roleId, roleName) {
     this.extendingRoles.add(roleId);

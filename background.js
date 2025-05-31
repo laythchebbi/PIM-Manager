@@ -268,47 +268,113 @@ class GraphAPIClient {
     return { value: enrichedRoles };
   }
 
-  async listActiveRoles() {
-    const data = await this.makeRequest(
-      "/roleManagement/directory/roleAssignmentScheduleRequests/filterByCurrentUser(on='principal')"
-    );
+async listActiveRoles() {
+  // Use the roleAssignmentScheduleInstances endpoint instead of requests
+  // This endpoint shows currently active role assignments, not historical requests
+  const data = await this.makeRequest(
+    "/roleManagement/directory/roleAssignmentScheduleInstances/filterByCurrentUser(on='principal')"
+  );
 
-    // Filter for active assignments and enrich with role names
-    const activeAssignments = data.value.filter(assignment => 
-      assignment.status === 'Provisioned' || assignment.action === 'selfActivate'
-    );
+  // Filter for truly active assignments only
+  const now = new Date();
+  const activeAssignments = data.value.filter(assignment => {
+    // Check if the assignment is currently active
+    const startDate = assignment.startDateTime ? new Date(assignment.startDateTime) : null;
+    const endDate = assignment.endDateTime ? new Date(assignment.endDateTime) : null;  // Fixed typo here
+    
+    // Assignment must have started and not yet ended
+    const hasStarted = !startDate || startDate <= now;
+    const hasNotEnded = !endDate || endDate > now;
+    
+    return hasStarted && hasNotEnded;
+  });
 
-    const enrichedRoles = await Promise.all(
-      activeAssignments.map(async (role) => ({
-        ...role,
-        roleName: await this.fetchRoleDefinition(role.roleDefinitionId)
-      }))
-    );
-
-    return { value: enrichedRoles };
-  }
-
-  async activateRole(eligibility, duration = 'PT1H', justification = 'Temporary access required') {
-    const body = {
-      principalId: eligibility.principalId,
-      roleDefinitionId: eligibility.roleDefinitionId,
-      directoryScopeId: eligibility.directoryScopeId || '/',
-      action: 'selfActivate',
-      justification,
+  // Enrich with role names
+  const enrichedRoles = await Promise.all(
+    activeAssignments.map(async (role) => ({
+      ...role,
+      roleName: await this.fetchRoleDefinition(role.roleDefinitionId),
+      // Normalize the structure to match what your frontend expects
       scheduleInfo: {
-        startDateTime: new Date().toISOString(),
+        startDateTime: role.startDateTime,
         expiration: {
-          type: 'afterDuration',
-          duration
+          endDateTime: role.endDateTime
         }
       }
-    };
+    }))
+  );
 
-    return this.makeRequest('/roleManagement/directory/roleAssignmentScheduleRequests', {
+  return { value: enrichedRoles };
+}
+async activateRole(eligibility, duration = 'PT1H', justification = 'Temporary access required') {
+  console.log('Activating role with eligibility:', eligibility);
+  
+  // First, get the current user's principal ID if not provided
+  let principalId = eligibility.principalId;
+  if (!principalId) {
+    try {
+      const userInfo = await this.makeRequest('/me');
+      principalId = userInfo.id;
+      console.log('Retrieved principal ID:', principalId);
+    } catch (error) {
+      console.error('Failed to get user info:', error);
+      throw new Error('Could not retrieve user information for activation');
+    }
+  }
+
+  // Construct the activation request body according to Microsoft Graph API spec
+  const body = {
+    action: 'selfActivate',
+    principalId: principalId,
+    roleDefinitionId: eligibility.roleDefinitionId,
+    directoryScopeId: eligibility.directoryScopeId || '/',
+    justification: justification,
+    scheduleInfo: {
+      startDateTime: new Date().toISOString(),
+      expiration: {
+        type: 'afterDuration',
+        duration: duration
+      }
+    }
+  };
+
+  console.log('Activation request body:', JSON.stringify(body, null, 2));
+
+  try {
+    const response = await this.makeRequest('/roleManagement/directory/roleAssignmentScheduleRequests', {
       method: 'POST',
       body: JSON.stringify(body)
     });
+    
+    console.log('Activation response:', response);
+    return response;
+  } catch (error) {
+    console.error('Activation failed:', error);
+    throw error;
   }
+}
+async getEligibleRoleDetails(roleDefinitionId, principalId) {
+  try {
+    // Get the specific eligible role assignment
+    const eligibleRoles = await this.makeRequest(
+      "/roleManagement/directory/roleEligibilityScheduleInstances/filterByCurrentUser(on='principal')"
+    );
+    
+    const eligibleRole = eligibleRoles.value.find(role => 
+      role.roleDefinitionId === roleDefinitionId
+    );
+    
+    if (!eligibleRole) {
+      throw new Error('Eligible role not found');
+    }
+    
+    return eligibleRole;
+  } catch (error) {
+    console.error('Failed to get eligible role details:', error);
+    throw error;
+  }
+}
+
 
   async extendRole(assignment, additionalDuration = 'PT2H', justification = 'Extension required') {
     // For extending, we create a new activation request with extended duration
