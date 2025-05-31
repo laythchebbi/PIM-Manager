@@ -1,0 +1,332 @@
+{
+  "extName": {
+    "message": "Azure PIM Helper",
+    "description": "Extension name"
+  },
+  "extDescription": {
+    "message": "Streamline Azure Privileged Identity Management with easy role activation and monitoring",
+    "description": "Extension description"
+  },
+  "defaultTitle": {
+    "message": "Azure PIM Helper",
+    "description": "Default popup title"
+  },
+  "headerTitle": {
+    "message": "Azure PIM Helper",
+    "description": "Main header title"
+  },
+  "headerSubtitle": {
+    "message": "Manage your privileged role lifecycle",
+    "description": "Header subtitle"
+  },
+  "refreshTooltip": {
+    "message": "Refresh roles",
+    "description": "Refresh button tooltip"
+  },
+  "themeTooltip": {
+    "message": "Toggle theme",
+    "description": "Theme toggle button tooltip"
+  },
+  "languageTooltip": {
+    "message": "Switch language",
+    "description": "Language toggle button tooltip"
+  },
+  "loadingRoles": {
+    "message": "Loading role data...",
+    "description": "Default loading message"
+  },
+  "connectingService": {
+    "message": "Connecting to extension service...",
+    "description": "Loading step 1"
+  },
+  "fetchingRoles": {
+    "message": "Fetching roles from Azure...",
+    "description": "Loading step 2"
+  },
+  "processingRoles": {
+    "message": "Processing role data...",
+    "description": "Loading step 3"
+  },
+  "updatingInterface": {
+    "message": "Updating interface...",
+    "description": "Loading step 4"
+  },
+  "tabEligible": {
+    "message": "Eligible",
+    "description": "Eligible roles tab"
+  },
+  "tabActive": {
+    "message": "Active",
+    "description": "Active roles tab"
+  },
+  "tabExpiring": {
+    "message": "Expiring",
+    "description": "Expiring roles tab"
+  },
+  "noEligibleRoles": {
+    "message": "No eligible roles available",
+    "description": "Empty state for eligible roles"
+  },
+  "noActiveRoles": {
+    "message": "No active roles currently",
+    "description": "Empty state for active roles"
+  },
+  "noExpiringRoles": {
+    "message": "No roles expiring soon",
+    "description": "Empty state for expiring roles"
+  },
+  "activateButton": {
+    "message": "Activate",
+    "description": "Activate role button"
+  },
+  "activatingButton": {
+    "message": "Activating",
+    "description": "Activating role button state"
+  },
+  "extendButton": {
+    "message": "Extend",
+    "description": "Extend role button"
+  },
+  "extendingButton": {
+    "message": "Extending",
+    "description": "Extending role button state"
+  },
+  "maxDuration": {
+    "message": "Max duration: $DURATION$",
+    "description": "Maximum role duration",
+    "placeholders": {
+      "duration": {
+        "content": "$1",
+        "example": "8 hours"
+      }
+    }
+  },
+  "activatedAt": {
+    "message": "Activated $TIME$",
+    "description": "Role activation time",
+    "placeholders": {
+      "time": {
+        "content": "$1",
+        "example": "2:30 PM"
+      }
+    }
+  },
+  "expiresIn": {
+    "message": "Expires in $TIME$",
+    "description": "Time until role expires",
+    "placeholders": {
+      "time": {
+        "content": "$1",
+        "example": "2h 30m"
+      }
+    }
+  },
+  "lastUpdated": {
+    "message": "Last updated: $TIME$",
+    "description": "Last refresh time",
+    "placeholders": {
+      "time": {
+        "content": "$1",
+        "example": "2:30:45 PM"
+      }
+    }
+  },
+  "justificationRequired": {
+    "message": "Justification Required",
+    "description": "Justification required badge"
+  },
+  "justificationNote": {
+    "message": "This role requires business justification for activation",
+    "description": "Justification requirement note"
+  },
+  "defaultJustification": {
+    "message": "Role activation requested via PIM Helper extension",
+    "description": "Default activation justification"
+  },
+  "adminJustification": {
+    "message": "Administrative task requiring elevated privileges - Role activation via PIM Helper extension",
+    "description": "Justification for high-privilege roles"
+  },
+  "rolesExpiringAlert": {
+    "message": "$COUNT$ role$PLURAL$ expiring within 1 hour",
+    "description": "Expiring roles alert",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      },
+      "plural": {
+        "content": "$2",
+        "example": "s"
+      }
+    }
+  },
+  "activationSuccess": {
+    "message": "Successfully activated $ROLE$",
+    "description": "Successful activation message",
+    "placeholders": {
+      "role": {
+        "content": "$1",
+        "example": "Global Administrator"
+      }
+    }
+  },
+  "extensionSuccess": {
+    "message": "Extended $ROLE$ for additional time",
+    "description": "Successful extension message",
+    "placeholders": {
+      "role": {
+        "content": "$1",
+        "example": "Global Administrator"
+      }
+    }
+  },
+  "activationFailed": {
+    "message": "Failed to activate $ROLE$: $ERROR$",
+    "description": "Failed activation message",
+    "placeholders": {
+      "role": {
+        "content": "$1",
+        "example": "Global Administrator"
+      },
+      "error": {
+        "content": "$2",
+        "example": "Insufficient permissions"
+      }
+    }
+  },
+  "extensionFailed": {
+    "message": "Failed to extend $ROLE$: $ERROR$",
+    "description": "Failed extension message",
+    "placeholders": {
+      "role": {
+        "content": "$1",
+        "example": "Global Administrator"
+      },
+      "error": {
+        "content": "$2",
+        "example": "Policy violation"
+      }
+    }
+  },
+  "rolesLoaded": {
+    "message": "Loaded $COUNT$ roles in $TIME$ms",
+    "description": "Roles loaded performance message",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "15"
+      },
+      "time": {
+        "content": "$2",
+        "example": "1250"
+      }
+    }
+  },
+  "languageChanged": {
+    "message": "Language changed successfully",
+    "description": "Language change confirmation"
+  },
+  "serviceNotResponding": {
+    "message": "Extension service not responding. Try reloading the extension.",
+    "description": "Service worker error"
+  },
+  "authenticationRequired": {
+    "message": "Authentication required. Click refresh to sign in.",
+    "description": "Authentication error"
+  },
+  "serviceNotAvailable": {
+    "message": "Extension service is not available",
+    "description": "Background script not available"
+  },
+  "roleNotFound": {
+    "message": "Role not found",
+    "description": "Role not found error"
+  },
+  "loadRolesFailed": {
+    "message": "Failed to load roles: $ERROR$",
+    "description": "General role loading error",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "Network timeout"
+      }
+    }
+  },
+  "refreshFailed": {
+    "message": "Refresh failed: $ERROR$",
+    "description": "Refresh operation failed",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "Connection lost"
+      }
+    }
+  },
+  "roleCritical": {
+    "message": "Critical",
+    "description": "Critical role type"
+  },
+  "roleHigh": {
+    "message": "High",
+    "description": "High privilege role type"
+  },
+  "roleMedium": {
+    "message": "Medium",
+    "description": "Medium privilege role type"
+  },
+  "serviceAzure": {
+    "message": "Azure",
+    "description": "Azure service"
+  },
+  "serviceEntraId": {
+    "message": "Entra ID",
+    "description": "Entra ID service"
+  },
+  "serviceMicrosoft365": {
+    "message": "Microsoft 365",
+    "description": "Microsoft 365 service"
+  },
+  "directoryScope": {
+    "message": "Directory",
+    "description": "Directory scope"
+  },
+  "hoursFormat": {
+    "message": "$HOURS$ hour$PLURAL$",
+    "description": "Hours format",
+    "placeholders": {
+      "hours": {
+        "content": "$1",
+        "example": "2"
+      },
+      "plural": {
+        "content": "$2",
+        "example": "s"
+      }
+    }
+  },
+  "timeFormatHoursMinutes": {
+    "message": "$HOURS$h $MINUTES$m",
+    "description": "Time format with hours and minutes",
+    "placeholders": {
+      "hours": {
+        "content": "$1",
+        "example": "2"
+      },
+      "minutes": {
+        "content": "$2",
+        "example": "30"
+      }
+    }
+  },
+  "timeFormatMinutes": {
+    "message": "$MINUTES$m",
+    "description": "Time format with minutes only",
+    "placeholders": {
+      "minutes": {
+        "content": "$1",
+        "example": "45"
+      }
+    }
+  }
+}

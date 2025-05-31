@@ -1,9 +1,13 @@
 // Enhanced Azure PIM Helper Background Script
-// Simplified version using implicit flow to avoid PKCE issues
+// Simplified version using implicit flow to avoid PKCE issues - with i18n support
 
 console.log('Background script loading...');
 
-// Configuration
+// Helper function to get localized messages in background script
+function getMessage(messageKey, substitutions = []) {
+  return chrome.i18n.getMessage(messageKey, substitutions);
+}
+
 // Configuration
 const CONFIG = {
   CLIENT_ID: '91ed420f-07a9-4c4a-9b55-dc4468a9225b',
@@ -281,130 +285,37 @@ class GraphAPIClient {
     // Enrich roles with names first
     const enrichedRoles = await this.enrichRolesWithNames(data.value);
     
-    // Use a practical approach: test what error messages we get when trying to activate without justification
+    // Check justification requirements using PIM policies
     const rolesWithJustificationInfo = await Promise.all(
       enrichedRoles.map(async (role) => {
         let requiresJustification = false;
-        let detectionMethod = 'none';
+        let detectionMethod = 'policy_check';
         
-        console.log(`🔍 Testing justification requirement for "${role.roleName}"`);
+        console.log(`🔍 Checking justification requirement for "${role.roleName}"`);
         
         try {
-          // Get current user principal ID
-          let principalId = role.principalId;
-          if (!principalId) {
-            try {
-              const userInfo = await this.makeRequest('/me');
-              principalId = userInfo.id;
-            } catch (error) {
-              console.warn(`Could not get user ID for ${role.roleName}`);
-              return { ...role, requiresJustification: false };
-            }
-          }
+          // Try to get the role management policy for this role
+          const policyResponse = await this.checkRoleJustificationRequirement(
+            role.roleDefinitionId, 
+            role.directoryScopeId
+          );
           
-          // Create a test activation request with minimal justification
-          const testActivationBody = {
-            action: 'selfActivate',
-            principalId: principalId,
-            roleDefinitionId: role.roleDefinitionId,
-            directoryScopeId: role.directoryScopeId || '/',
-            justification: 'test', // Very minimal justification
-            scheduleInfo: {
-              startDateTime: new Date(Date.now() + 60000).toISOString(), // Start in 1 minute
-              expiration: {
-                type: 'afterDuration',
-                duration: 'PT5M' // Only 5 minutes duration
-              }
-            }
-          };
-          
-          console.log(`🧪 Testing activation validation for "${role.roleName}"`);
-          
-          // First test: Try with minimal justification to see if it's accepted
-          const testResponse = await fetch(`${CONFIG.GRAPH_BASE_URL}/roleManagement/directory/roleAssignmentScheduleRequests`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${await this.tokenManager.getValidToken()}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(testActivationBody)
-          });
-          
-          const responseData = await testResponse.json();
-          console.log(`📊 Test activation response for "${role.roleName}":`, { 
-            status: testResponse.status, 
-            ok: testResponse.ok,
-            data: responseData 
-          });
-          
-          if (testResponse.ok) {
-            // Activation succeeded - this role doesn't require justification (or accepts minimal justification)
-            console.log(`✅ Role "${role.roleName}" activated successfully - minimal/no justification requirement`);
-            detectionMethod = 'successful_test';
-            
-            // Immediately cancel this test activation
-            try {
-              if (responseData.id) {
-                const cancelBody = {
-                  action: 'adminRemove',
-                  justification: 'Cancelling test activation'
-                };
-                
-                await fetch(`${CONFIG.GRAPH_BASE_URL}/roleManagement/directory/roleAssignmentScheduleRequests/${responseData.id}`, {
-                  method: 'DELETE',
-                  headers: {
-                    'Authorization': `Bearer ${await this.tokenManager.getValidToken()}`,
-                    'Content-Type': 'application/json'
-                  }
-                });
-                console.log(`🗑️ Cancelled test activation for "${role.roleName}"`);
-              }
-            } catch (cancelError) {
-              console.warn(`⚠️ Could not cancel test activation for "${role.roleName}":`, cancelError);
-            }
-            
+          if (policyResponse.success) {
+            requiresJustification = policyResponse.requiresJustification;
+            detectionMethod = 'policy_api';
+            console.log(`📋 Policy check for "${role.roleName}": requiresJustification=${requiresJustification}`);
           } else {
-            // Activation failed - check the error message
-            console.log(`❌ Test activation failed for "${role.roleName}": ${testResponse.status}`);
-            
-            if (responseData.error) {
-              const errorMessage = responseData.error.message?.toLowerCase() || '';
-              const errorCode = responseData.error.code?.toLowerCase() || '';
-              
-              console.log(`🔍 Error analysis for "${role.roleName}": message="${errorMessage}", code="${errorCode}"`);
-              
-              // Check if the error indicates justification is required
-              if (errorMessage.includes('justification') || 
-                  errorMessage.includes('reason') ||
-                  errorMessage.includes('business') ||
-                  errorCode.includes('justification') ||
-                  errorMessage.includes('required') && errorMessage.includes('activat')) {
-                requiresJustification = true;
-                detectionMethod = 'error_analysis';
-                console.log(`✅ "${role.roleName}" requires justification (detected from error message)`);
-              } else {
-                console.log(`❓ "${role.roleName}" failed for other reasons (not justification): ${errorMessage}`);
-              }
-            }
+            // Fallback to pattern-based detection if policy check fails
+            requiresJustification = this.detectJustificationByPattern(role.roleName);
+            detectionMethod = 'pattern_fallback';
+            console.log(`🔍 Pattern fallback for "${role.roleName}": requiresJustification=${requiresJustification}`);
           }
           
         } catch (error) {
-          console.error(`💥 Error testing justification for "${role.roleName}":`, error);
-        }
-        
-        // Fallback: If we couldn't detect via testing, use role name patterns
-        if (detectionMethod === 'none') {
-          const highPrivilegeRoles = [
-            'Global Administrator',
-            'Privileged Role Administrator',
-            'Security Administrator',
-            'Privileged Authentication Administrator'
-          ];
-          
-          if (highPrivilegeRoles.includes(role.roleName)) {
-            console.log(`🔒 "${role.roleName}" is high-privilege role - likely requires justification (fallback)`);
-            // Note: Not setting to true automatically, just informational
-          }
+          console.warn(`⚠️ Error checking policy for "${role.roleName}":`, error);
+          // Fallback to pattern-based detection
+          requiresJustification = this.detectJustificationByPattern(role.roleName);
+          detectionMethod = 'pattern_fallback';
         }
         
         console.log(`🎯 Final result for "${role.roleName}": requiresJustification=${requiresJustification}, method=${detectionMethod}`);
@@ -424,9 +335,507 @@ class GraphAPIClient {
     }));
     
     console.log(`📊 Justification detection summary:`, detectionSummary);
-    console.log(`✅ Loaded ${rolesWithJustificationInfo.length} eligible roles with test-based justification detection`);
+    console.log(`✅ Loaded ${rolesWithJustificationInfo.length} eligible roles with policy-based justification detection`);
     
     return { value: rolesWithJustificationInfo };
+  }
+
+  async listEligibleRoles() {
+    console.log('Loading eligible roles...');
+    await this.preloadRoleDefinitions();
+    
+    const data = await this.makeRequest(
+      "/roleManagement/directory/roleEligibilityScheduleInstances/filterByCurrentUser(on='principal')"
+    );
+
+    console.log('🔍 Raw eligibility data:', data);
+
+    // Enrich roles with names first
+    const enrichedRoles = await this.enrichRolesWithNames(data.value);
+    
+    // Query actual PIM policies for justification requirements
+    const rolesWithJustificationInfo = await Promise.all(
+      enrichedRoles.map(async (role) => {
+        console.log(`🔍 Querying PIM policy for "${role.roleName}" (${role.roleDefinitionId})`);
+        
+        const justificationRequired = await this.checkActualPIMJustificationSetting(
+          role.roleDefinitionId, 
+          role.directoryScopeId || '/'
+        );
+        
+        console.log(`🎯 PIM Policy Result for "${role.roleName}": requiresJustification=${justificationRequired}`);
+        
+        return {
+          ...role,
+          requiresJustification: justificationRequired,
+          detectionMethod: 'pim_policy_query'
+        };
+      })
+    );
+
+    const detectionSummary = rolesWithJustificationInfo.map(r => ({
+      name: r.roleName,
+      requiresJustification: r.requiresJustification
+    }));
+    
+    console.log(`📊 PIM Policy Results:`, detectionSummary);
+    console.log(`✅ Loaded ${rolesWithJustificationInfo.length} eligible roles with actual PIM policy justification settings`);
+    
+    return { value: rolesWithJustificationInfo };
+  }
+
+  // Query actual PIM policy to check "Require justification on activation" setting
+  async checkActualPIMJustificationSetting(roleDefinitionId, scopeId) {
+    console.log(`🔍 Starting PIM policy check for role: ${roleDefinitionId}, scope: ${scopeId}`);
+    
+    try {
+      // Step 1: Try to get policy assignment
+      console.log(`📡 Step 1: Getting policy assignment...`);
+      const assignmentEndpoint = `/policies/roleManagementPolicyAssignments?$filter=scopeId eq '${scopeId}' and scopeType eq 'DirectoryRole' and roleDefinitionId eq '${roleDefinitionId}'`;
+      
+      console.log(`📡 Assignment URL: ${assignmentEndpoint}`);
+      const assignmentResponse = await this.makeRequest(assignmentEndpoint);
+      
+      console.log(`📋 Assignment response:`, JSON.stringify(assignmentResponse, null, 2));
+      
+      if (!assignmentResponse.value || assignmentResponse.value.length === 0) {
+        console.log(`❌ No policy assignment found, trying alternative approaches...`);
+        return await this.tryAlternativePolicyMethods(roleDefinitionId, scopeId);
+      }
+      
+      const policyId = assignmentResponse.value[0].policyId;
+      console.log(`✅ Found policy ID: ${policyId}`);
+      
+      // Step 2: Get the actual policy with rules
+      console.log(`📡 Step 2: Getting policy details...`);
+      const policyEndpoint = `/policies/roleManagementPolicies/${policyId}?$expand=rules`;
+      
+      console.log(`📡 Policy URL: ${policyEndpoint}`);
+      const policyResponse = await this.makeRequest(policyEndpoint);
+      
+      console.log(`📋 Policy response:`, JSON.stringify(policyResponse, null, 2));
+      
+      if (!policyResponse.rules) {
+        console.log(`❌ No rules found in policy, trying alternatives...`);
+        return await this.tryAlternativePolicyMethods(roleDefinitionId, scopeId);
+      }
+      
+      console.log(`📋 Found ${policyResponse.rules.length} rules in policy`);
+      
+      // Step 3: Analyze rules for justification requirement
+      return this.analyzeRulesForJustification(policyResponse.rules);
+      
+    } catch (error) {
+      console.error(`💥 Error in main policy check:`, error);
+      console.log(`🔄 Trying alternative methods due to error...`);
+      return await this.tryAlternativePolicyMethods(roleDefinitionId, scopeId);
+    }
+  }
+
+  // Alternative methods to try if main policy check fails
+  async tryAlternativePolicyMethods(roleDefinitionId, scopeId) {
+    console.log(`🔄 Trying alternative policy detection methods...`);
+    
+    // Method 1: Try direct policy query without assignment
+    try {
+      console.log(`📡 Method 1: Direct policy query...`);
+      const directPolicyEndpoint = `/policies/roleManagementPolicies?$filter=roleDefinitionId eq '${roleDefinitionId}'&$expand=rules`;
+      
+      console.log(`📡 Direct policy URL: ${directPolicyEndpoint}`);
+      const directPolicyResponse = await this.makeRequest(directPolicyEndpoint);
+      
+      console.log(`📋 Direct policy response:`, JSON.stringify(directPolicyResponse, null, 2));
+      
+      if (directPolicyResponse.value && directPolicyResponse.value.length > 0) {
+        for (const policy of directPolicyResponse.value) {
+          console.log(`📋 Checking policy: ${policy.displayName || policy.id}`);
+          if (policy.rules) {
+            const result = this.analyzeRulesForJustification(policy.rules);
+            if (result !== null) {
+              console.log(`✅ Method 1 succeeded: ${result}`);
+              return result;
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.warn(`⚠️ Method 1 failed:`, error);
+    }
+
+    // Method 2: Try querying all policies and find matching ones
+    try {
+      console.log(`📡 Method 2: Querying all policies...`);
+      const allPoliciesEndpoint = `/policies/roleManagementPolicies?$expand=rules&$top=100`;
+      
+      console.log(`📡 All policies URL: ${allPoliciesEndpoint}`);
+      const allPoliciesResponse = await this.makeRequest(allPoliciesEndpoint);
+      
+      console.log(`📋 All policies response: Found ${allPoliciesResponse.value?.length || 0} policies`);
+      
+      if (allPoliciesResponse.value && allPoliciesResponse.value.length > 0) {
+        for (const policy of allPoliciesResponse.value) {
+          if (policy.roleDefinitionId === roleDefinitionId) {
+            console.log(`📋 Found matching policy: ${policy.displayName || policy.id}`);
+            if (policy.rules) {
+              const result = this.analyzeRulesForJustification(policy.rules);
+              if (result !== null) {
+                console.log(`✅ Method 2 succeeded: ${result}`);
+                return result;
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.warn(`⚠️ Method 2 failed:`, error);
+    }
+
+    // Method 3: Check if we have the necessary permissions
+    try {
+      console.log(`📡 Method 3: Testing API permissions...`);
+      const testEndpoint = `/policies/roleManagementPolicies?$top=1`;
+      
+      const testResponse = await this.makeRequest(testEndpoint);
+      console.log(`📋 Permission test result:`, testResponse);
+      
+      if (testResponse.error) {
+        console.log(`❌ Permission issue detected: ${testResponse.error.message}`);
+        console.log(`🔧 Required permissions: Policy.Read.All or RoleManagementPolicy.Read.Directory`);
+      }
+    } catch (error) {
+      console.warn(`⚠️ Permission test failed:`, error);
+      console.log(`🔧 This might be a permissions issue. Required: Policy.Read.All or RoleManagementPolicy.Read.Directory`);
+    }
+
+    // Final fallback: Conservative pattern matching
+    console.log(`🔄 All methods failed, using conservative fallback...`);
+    const roleName = this.roleDefinitionCache.get(roleDefinitionId)?.displayName || '';
+    
+    const criticalRoles = [
+      'Global Administrator',
+      'Privileged Role Administrator',
+      'Security Administrator'
+    ];
+    
+    const requiresJustification = criticalRoles.some(criticalRole => roleName.includes(criticalRole));
+    console.log(`🔄 Fallback result for "${roleName}": ${requiresJustification}`);
+    
+    return requiresJustification;
+  }
+
+  // Analyze policy rules to find justification requirement
+  analyzeRulesForJustification(rules) {
+    console.log(`🔍 Analyzing ${rules.length} policy rules for justification requirement...`);
+    
+    // Look for EndUser Assignment rules (this is what controls role activation)
+    let endUserAssignmentRule = null;
+    let adminAssignmentRule = null;
+    let approvalRule = null;
+    
+    // First pass: collect all relevant rules without early returns
+    for (let i = 0; i < rules.length; i++) {
+      const rule = rules[i];
+      console.log(`📋 Rule ${i + 1}: Type = ${rule['@odata.type']}, Target = ${rule.target?.caller}/${rule.target?.level}`);
+      
+      // Check enablement rules for EndUser Assignment (role activation)
+      if (rule['@odata.type'] === '#microsoft.graph.unifiedRoleManagementPolicyEnablementRule') {
+        if (rule.target?.caller === 'EndUser' && rule.target?.level === 'Assignment') {
+          console.log(`📋 ✅ Found EndUser Assignment enablement rule (MAIN RULE FOR ACTIVATION)!`);
+          console.log(`📋 EndUser enabled rules:`, rule.enabledRules);
+          endUserAssignmentRule = rule;
+        } else if (rule.target?.caller === 'Admin' && rule.target?.level === 'Assignment') {
+          console.log(`📋 Found Admin Assignment enablement rule (fallback)!`);
+          console.log(`📋 Admin enabled rules:`, rule.enabledRules);
+          adminAssignmentRule = rule;
+        } else {
+          console.log(`📋 Skipping rule: ${rule.target?.caller}/${rule.target?.level} (not relevant for activation)`);
+        }
+      }
+      
+      // Collect approval rules for EndUser Assignment
+      if (rule['@odata.type'] === '#microsoft.graph.unifiedRoleManagementPolicyApprovalRule') {
+        if (rule.target?.caller === 'EndUser' && rule.target?.level === 'Assignment') {
+          console.log(`📋 Found EndUser Assignment approval rule!`);
+          console.log(`📋 Approval settings:`, rule.setting);
+          approvalRule = rule;
+        }
+      }
+    }
+    
+    // Analysis summary
+    console.log(`📊 RULE ANALYSIS SUMMARY:`);
+    console.log(`📊 EndUser Assignment Rule: ${endUserAssignmentRule ? 'Found' : 'Not Found'}`);
+    console.log(`📊 Admin Assignment Rule: ${adminAssignmentRule ? 'Found' : 'Not Found'}`);
+    console.log(`📊 Approval Rule: ${approvalRule ? 'Found' : 'Not Found'}`);
+    
+    // Priority 1: Check EndUser Assignment enablement rule (this is the PRIMARY control)
+    if (endUserAssignmentRule) {
+      if (endUserAssignmentRule.enabledRules && Array.isArray(endUserAssignmentRule.enabledRules)) {
+        const hasJustification = endUserAssignmentRule.enabledRules.includes('Justification');
+        const hasMFA = endUserAssignmentRule.enabledRules.includes('MultiFactorAuthentication');
+        
+        console.log(`🎯 PRIMARY RESULT (EndUser Assignment Enablement Rule):`);
+        console.log(`🎯 - Justification Required: ${hasJustification ? 'YES' : 'NO'}`);
+        console.log(`🎯 - MFA Required: ${hasMFA ? 'YES' : 'NO'}`);
+        console.log(`🎯 - All Enabled Rules: [${endUserAssignmentRule.enabledRules.join(', ')}]`);
+        
+        // This is the authoritative answer - return it regardless of approval rule
+        console.log(`✅ FINAL DECISION: ${hasJustification ? 'JUSTIFICATION REQUIRED' : 'NO JUSTIFICATION REQUIRED'} (based on enablement rule)`);
+        return hasJustification;
+      }
+    }
+    
+    // Priority 2: Check approval rule only if no enablement rule was found
+    if (approvalRule && approvalRule.setting) {
+      const approvalRequired = approvalRule.setting.isApprovalRequired;
+      const justificationRequired = approvalRule.setting.isRequestorJustificationRequired;
+      
+      console.log(`🎯 FALLBACK TO APPROVAL RULE ANALYSIS:`);
+      console.log(`🎯 - Approval Required: ${approvalRequired ? 'YES' : 'NO'}`);
+      console.log(`🎯 - Requestor Justification Required: ${justificationRequired ? 'YES' : 'NO'}`);
+      
+      if (approvalRequired || justificationRequired) {
+        console.log(`✅ FINAL DECISION: JUSTIFICATION REQUIRED (based on approval rule)`);
+        return true;
+      }
+    }
+    
+    // Priority 3: Check Admin Assignment rule as final fallback
+    if (adminAssignmentRule) {
+      if (adminAssignmentRule.enabledRules && Array.isArray(adminAssignmentRule.enabledRules)) {
+        const hasJustification = adminAssignmentRule.enabledRules.includes('Justification');
+        console.log(`✅ FINAL DECISION: ${hasJustification ? 'JUSTIFICATION REQUIRED' : 'NO JUSTIFICATION REQUIRED'} (based on admin rule - fallback)`);
+        return hasJustification;
+      }
+    }
+    
+    console.log(`❌ NO RELEVANT RULES FOUND - FINAL DECISION: NO JUSTIFICATION REQUIRED`);
+    return false;
+  }
+
+  // Method 1: Check role management policy assignments
+  async checkRoleManagementPolicies(roleDefinitionId, directoryScopeId) {
+    try {
+      console.log(`🔍 Method 1: Checking policy assignments for role ${roleDefinitionId}`);
+      
+      // Try the policy assignments endpoint
+      const policyEndpoint = `/policies/roleManagementPolicyAssignments?$filter=scopeId eq '${directoryScopeId || '/'}' and scopeType eq 'DirectoryRole' and roleDefinitionId eq '${roleDefinitionId}'&$expand=policy($expand=rules)`;
+      
+      console.log(`📡 Calling: ${policyEndpoint}`);
+      const policyData = await this.makeRequest(policyEndpoint);
+      
+      if (policyData.value && policyData.value.length > 0) {
+        const assignment = policyData.value[0];
+        console.log(`📋 Found policy assignment:`, assignment.id);
+        
+        if (assignment.policy && assignment.policy.rules) {
+          const requiresJustification = this.analyzeRules(assignment.policy.rules);
+          console.log(`✅ Policy analysis complete: requiresJustification=${requiresJustification}`);
+          return { success: true, requiresJustification };
+        }
+      }
+      
+      return { success: false, requiresJustification: false };
+    } catch (error) {
+      console.warn(`⚠️ Method 1 failed:`, error.message);
+      return { success: false, requiresJustification: false };
+    }
+  }
+
+  // Method 2: Try alternative policy endpoint
+  async checkAlternativePolicyEndpoint(roleDefinitionId) {
+    try {
+      console.log(`🔍 Method 2: Checking alternative policy endpoint for role ${roleDefinitionId}`);
+      
+      const policyEndpoint = `/policies/roleManagementPolicies?$filter=roleDefinitionId eq '${roleDefinitionId}'&$expand=rules`;
+      
+      console.log(`📡 Calling: ${policyEndpoint}`);
+      const policyData = await this.makeRequest(policyEndpoint);
+      
+      if (policyData.value && policyData.value.length > 0) {
+        for (const policy of policyData.value) {
+          console.log(`📋 Found policy:`, policy.displayName);
+          
+          if (policy.rules) {
+            const requiresJustification = this.analyzeRules(policy.rules);
+            if (requiresJustification) {
+              console.log(`✅ Alternative policy analysis: requiresJustification=true`);
+              return { success: true, requiresJustification: true };
+            }
+          }
+        }
+        
+        console.log(`❌ Alternative policy analysis: requiresJustification=false`);
+        return { success: true, requiresJustification: false };
+      }
+      
+      return { success: false, requiresJustification: false };
+    } catch (error) {
+      console.warn(`⚠️ Method 2 failed:`, error.message);
+      return { success: false, requiresJustification: false };
+    }
+  }
+
+  // Method 3: Check role definition properties
+  async checkRoleDefinitionProperties(roleDefinitionId) {
+    try {
+      console.log(`🔍 Method 3: Checking role definition properties for ${roleDefinitionId}`);
+      
+      const roleDefEndpoint = `/roleManagement/directory/roleDefinitions/${roleDefinitionId}`;
+      
+      console.log(`📡 Calling: ${roleDefEndpoint}`);
+      const roleData = await this.makeRequest(roleDefEndpoint);
+      
+      if (roleData) {
+        console.log(`📋 Role definition found:`, roleData.displayName);
+        
+        // Check if role has high-risk permissions that typically require justification
+        const hasHighRiskPermissions = this.checkHighRiskPermissions(roleData);
+        
+        console.log(`🔒 High risk permissions check: ${hasHighRiskPermissions}`);
+        return { success: true, requiresJustification: hasHighRiskPermissions };
+      }
+      
+      return { success: false, requiresJustification: false };
+    } catch (error) {
+      console.warn(`⚠️ Method 3 failed:`, error.message);
+      return { success: false, requiresJustification: false };
+    }
+  }
+
+  // Analyze policy rules for justification requirements
+  analyzeRules(rules) {
+    console.log(`🔍 Analyzing ${rules.length} policy rules`);
+    
+    for (const rule of rules) {
+      console.log(`📋 Checking rule type: ${rule['@odata.type']}`);
+      
+      // Check enablement rules
+      if (rule['@odata.type'] === '#microsoft.graph.unifiedRoleManagementPolicyEnablementRule') {
+        console.log(`📋 Enablement rule found, enabled rules:`, rule.enabledRules);
+        if (rule.enabledRules && rule.enabledRules.includes('Justification')) {
+          console.log(`✅ Justification requirement found in enablement rule!`);
+          return true;
+        }
+      }
+      
+      // Check approval rules
+      if (rule['@odata.type'] === '#microsoft.graph.unifiedRoleManagementPolicyApprovalRule') {
+        console.log(`📋 Approval rule found:`, rule.setting);
+        if (rule.setting && rule.setting.isApprovalRequired) {
+          console.log(`✅ Approval requirement found!`);
+          return true;
+        }
+      }
+      
+      // Check authentication context rules
+      if (rule['@odata.type'] === '#microsoft.graph.unifiedRoleManagementPolicyAuthenticationContextRule') {
+        console.log(`📋 Authentication context rule found`);
+        if (rule.isEnabled) {
+          console.log(`✅ Authentication context required!`);
+          return true;
+        }
+      }
+    }
+    
+    console.log(`❌ No justification requirements found in rules`);
+    return false;
+  }
+
+  // Check if role has high-risk permissions
+  checkHighRiskPermissions(roleDefinition) {
+    if (!roleDefinition.rolePermissions || !roleDefinition.rolePermissions[0]) {
+      return false;
+    }
+    
+    const permissions = roleDefinition.rolePermissions[0];
+    const allowedActions = permissions.allowedResourceActions || [];
+    
+    // High-risk actions that typically require justification
+    const highRiskActions = [
+      'microsoft.directory/users/delete',
+      'microsoft.directory/groups/delete',
+      'microsoft.directory/applications/delete',
+      'microsoft.directory/servicePrincipals/delete',
+      'microsoft.directory/roleDefinitions/allProperties/allTasks',
+      'microsoft.directory/roleAssignments/allProperties/allTasks',
+      'microsoft.directory/policies/allProperties/allTasks',
+      'microsoft.directory/conditionalAccessPolicies/allProperties/allTasks',
+      'microsoft.directory/privilegedIdentityManagement/allProperties/allTasks'
+    ];
+    
+    const hasHighRisk = allowedActions.some(action => 
+      highRiskActions.some(riskAction => action.includes(riskAction))
+    );
+    
+    console.log(`🔒 High risk permissions analysis: ${hasHighRisk}`);
+    return hasHighRisk;
+  }
+
+  // Enhanced pattern-based detection with more roles
+  detectJustificationByEnhancedPattern(roleName) {
+    // Tier 1: Always require justification (highest privilege)
+    const tier1Roles = [
+      'Global Administrator',
+      'Privileged Role Administrator',
+      'Security Administrator',
+      'Privileged Authentication Administrator'
+    ];
+    
+    // Tier 2: Usually require justification (high privilege)
+    const tier2Roles = [
+      'Application Administrator',
+      'Authentication Administrator',
+      'Azure AD Joined Device Local Administrator',
+      'Cloud Application Administrator',
+      'Conditional Access Administrator',
+      'Exchange Administrator',
+      'User Administrator',
+      'Groups Administrator',
+      'Intune Administrator',
+      'SharePoint Administrator',
+      'Teams Administrator',
+      'Compliance Administrator',
+      'Privileged Access Administrator',
+      'Identity Governance Administrator',
+      'Partner Tier2 Support',
+      'Directory Synchronization Accounts',
+      'External Identity Provider Administrator',
+      'Hybrid Identity Administrator'
+    ];
+    
+    // Tier 3: Sometimes require justification (medium privilege)
+    const tier3Roles = [
+      'Security Reader',
+      'Reports Reader',
+      'Message Center Reader',
+      'Directory Readers',
+      'Guest Inviter',
+      'License Administrator',
+      'Password Administrator',
+      'Helpdesk Administrator',
+      'Service Support Administrator',
+      'Billing Administrator'
+    ];
+    
+    // Check tiers
+    if (tier1Roles.some(role => roleName.includes(role))) {
+      console.log(`🔴 Tier 1 role detected: ${roleName} - REQUIRES justification`);
+      return true;
+    }
+    
+    if (tier2Roles.some(role => roleName.includes(role))) {
+      console.log(`🟡 Tier 2 role detected: ${roleName} - LIKELY requires justification`);
+      return true;
+    }
+    
+    if (tier3Roles.some(role => roleName.includes(role))) {
+      console.log(`🟢 Tier 3 role detected: ${roleName} - MAY require justification`);
+      return false; // Conservative: assume no justification for lower privilege roles
+    }
+    
+    console.log(`⚪ Unknown role: ${roleName} - assuming no justification required`);
+    return false;
   }
 
   async listActiveRoles() {
@@ -464,8 +873,11 @@ class GraphAPIClient {
     return { value: normalizedRoles };
   }
 
-  async activateRole(eligibility, duration = 'PT1H', justification = 'Role activation requested via PIM Helper extension') {
+  async activateRole(eligibility, duration = 'PT1H', justification = null) {
     console.log('Activating role with eligibility:', eligibility);
+    
+    // Use localized default justification if none provided
+    const defaultJustification = justification || getMessage('defaultJustification');
     
     let principalId = eligibility.principalId;
     if (!principalId) {
@@ -484,7 +896,7 @@ class GraphAPIClient {
       principalId: principalId,
       roleDefinitionId: eligibility.roleDefinitionId,
       directoryScopeId: eligibility.directoryScopeId || '/',
-      justification: justification,
+      justification: defaultJustification,
       scheduleInfo: {
         startDateTime: new Date().toISOString(),
         expiration: {
@@ -510,7 +922,10 @@ class GraphAPIClient {
     }
   }
 
-  async extendRole(assignment, additionalDuration = 'PT2H', justification = 'Extension required') {
+  async extendRole(assignment, additionalDuration = 'PT2H', justification = null) {
+    // Use localized default justification if none provided
+    const defaultJustification = justification || getMessage('defaultJustification');
+    
     const currentExpiry = new Date(assignment.scheduleInfo?.expiration?.endDateTime || Date.now());
     const newExpiry = new Date(currentExpiry.getTime() + (2 * 60 * 60 * 1000));
 
@@ -519,7 +934,7 @@ class GraphAPIClient {
       roleDefinitionId: assignment.roleDefinitionId,
       directoryScopeId: assignment.directoryScopeId || '/',
       action: 'selfExtend',
-      justification,
+      justification: defaultJustification,
       scheduleInfo: {
         startDateTime: new Date().toISOString(),
         expiration: {
@@ -620,7 +1035,7 @@ class AzurePIMManager {
           this.graphClient.clearCache();
           try {
             await this.tokenManager.authenticate();
-            sendResponse({ success: true, message: 'Re-authentication successful' });
+            sendResponse({ success: true, message: getMessage('authenticationRequired') });
           } catch (error) {
             sendResponse({ success: false, error: error.message });
           }

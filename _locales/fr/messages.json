@@ -1,0 +1,332 @@
+{
+  "extName": {
+    "message": "Assistant Azure PIM",
+    "description": "Nom de l'extension"
+  },
+  "extDescription": {
+    "message": "Simplifiez Azure Privileged Identity Management avec activation et surveillance faciles des rôles",
+    "description": "Description de l'extension"
+  },
+  "defaultTitle": {
+    "message": "Assistant Azure PIM",
+    "description": "Titre par défaut du popup"
+  },
+  "headerTitle": {
+    "message": "Assistant Azure PIM",
+    "description": "Titre principal de l'en-tête"
+  },
+  "headerSubtitle": {
+    "message": "Gérez le cycle de vie de vos rôles privilégiés",
+    "description": "Sous-titre de l'en-tête"
+  },
+  "refreshTooltip": {
+    "message": "Actualiser les rôles",
+    "description": "Info-bulle du bouton d'actualisation"
+  },
+  "themeTooltip": {
+    "message": "Basculer le thème",
+    "description": "Info-bulle du bouton de basculement de thème"
+  },
+  "languageTooltip": {
+    "message": "Changer de langue",
+    "description": "Info-bulle du bouton de changement de langue"
+  },
+  "loadingRoles": {
+    "message": "Chargement des données de rôles...",
+    "description": "Message de chargement par défaut"
+  },
+  "connectingService": {
+    "message": "Connexion au service d'extension...",
+    "description": "Étape de chargement 1"
+  },
+  "fetchingRoles": {
+    "message": "Récupération des rôles depuis Azure...",
+    "description": "Étape de chargement 2"
+  },
+  "processingRoles": {
+    "message": "Traitement des données de rôles...",
+    "description": "Étape de chargement 3"
+  },
+  "updatingInterface": {
+    "message": "Mise à jour de l'interface...",
+    "description": "Étape de chargement 4"
+  },
+  "tabEligible": {
+    "message": "Éligibles",
+    "description": "Onglet des rôles éligibles"
+  },
+  "tabActive": {
+    "message": "Actifs",
+    "description": "Onglet des rôles actifs"
+  },
+  "tabExpiring": {
+    "message": "Expirant",
+    "description": "Onglet des rôles expirant"
+  },
+  "noEligibleRoles": {
+    "message": "Aucun rôle éligible disponible",
+    "description": "État vide pour les rôles éligibles"
+  },
+  "noActiveRoles": {
+    "message": "Aucun rôle actif actuellement",
+    "description": "État vide pour les rôles actifs"
+  },
+  "noExpiringRoles": {
+    "message": "Aucun rôle expirant bientôt",
+    "description": "État vide pour les rôles expirant"
+  },
+  "activateButton": {
+    "message": "Activer",
+    "description": "Bouton d'activation de rôle"
+  },
+  "activatingButton": {
+    "message": "Activation",
+    "description": "État du bouton d'activation de rôle"
+  },
+  "extendButton": {
+    "message": "Prolonger",
+    "description": "Bouton de prolongation de rôle"
+  },
+  "extendingButton": {
+    "message": "Prolongation",
+    "description": "État du bouton de prolongation de rôle"
+  },
+  "maxDuration": {
+    "message": "Durée maximale : $DURATION$",
+    "description": "Durée maximale du rôle",
+    "placeholders": {
+      "duration": {
+        "content": "$1",
+        "example": "8 heures"
+      }
+    }
+  },
+  "activatedAt": {
+    "message": "Activé à $TIME$",
+    "description": "Heure d'activation du rôle",
+    "placeholders": {
+      "time": {
+        "content": "$1",
+        "example": "14:30"
+      }
+    }
+  },
+  "expiresIn": {
+    "message": "Expire dans $TIME$",
+    "description": "Temps avant expiration du rôle",
+    "placeholders": {
+      "time": {
+        "content": "$1",
+        "example": "2h 30m"
+      }
+    }
+  },
+  "lastUpdated": {
+    "message": "Dernière mise à jour : $TIME$",
+    "description": "Heure de la dernière actualisation",
+    "placeholders": {
+      "time": {
+        "content": "$1",
+        "example": "14:30:45"
+      }
+    }
+  },
+  "justificationRequired": {
+    "message": "Justification Requise",
+    "description": "Badge de justification requise"
+  },
+  "justificationNote": {
+    "message": "Ce rôle nécessite une justification métier pour l'activation",
+    "description": "Note sur l'exigence de justification"
+  },
+  "defaultJustification": {
+    "message": "Activation de rôle demandée via l'extension Assistant PIM",
+    "description": "Justification d'activation par défaut"
+  },
+  "adminJustification": {
+    "message": "Tâche administrative nécessitant des privilèges élevés - Activation de rôle via l'extension Assistant PIM",
+    "description": "Justification pour les rôles à hauts privilèges"
+  },
+  "rolesExpiringAlert": {
+    "message": "$COUNT$ rôle$PLURAL$ expirant dans 1 heure",
+    "description": "Alerte de rôles expirant",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      },
+      "plural": {
+        "content": "$2",
+        "example": "s"
+      }
+    }
+  },
+  "activationSuccess": {
+    "message": "$ROLE$ activé avec succès",
+    "description": "Message d'activation réussie",
+    "placeholders": {
+      "role": {
+        "content": "$1",
+        "example": "Administrateur global"
+      }
+    }
+  },
+  "extensionSuccess": {
+    "message": "$ROLE$ prolongé pour une durée supplémentaire",
+    "description": "Message de prolongation réussie",
+    "placeholders": {
+      "role": {
+        "content": "$1",
+        "example": "Administrateur global"
+      }
+    }
+  },
+  "activationFailed": {
+    "message": "Échec de l'activation de $ROLE$ : $ERROR$",
+    "description": "Message d'échec d'activation",
+    "placeholders": {
+      "role": {
+        "content": "$1",
+        "example": "Administrateur global"
+      },
+      "error": {
+        "content": "$2",
+        "example": "Permissions insuffisantes"
+      }
+    }
+  },
+  "extensionFailed": {
+    "message": "Échec de la prolongation de $ROLE$ : $ERROR$",
+    "description": "Message d'échec de prolongation",
+    "placeholders": {
+      "role": {
+        "content": "$1",
+        "example": "Administrateur global"
+      },
+      "error": {
+        "content": "$2",
+        "example": "Violation de politique"
+      }
+    }
+  },
+  "rolesLoaded": {
+    "message": "$COUNT$ rôles chargés en $TIME$ms",
+    "description": "Message de performance de chargement des rôles",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "15"
+      },
+      "time": {
+        "content": "$2",
+        "example": "1250"
+      }
+    }
+  },
+  "languageChanged": {
+    "message": "Langue changée avec succès",
+    "description": "Confirmation du changement de langue"
+  },
+  "serviceNotResponding": {
+    "message": "Le service d'extension ne répond pas. Essayez de recharger l'extension.",
+    "description": "Erreur du service worker"
+  },
+  "authenticationRequired": {
+    "message": "Authentification requise. Cliquez sur actualiser pour vous connecter.",
+    "description": "Erreur d'authentification"
+  },
+  "serviceNotAvailable": {
+    "message": "Le service d'extension n'est pas disponible",
+    "description": "Script d'arrière-plan non disponible"
+  },
+  "roleNotFound": {
+    "message": "Rôle introuvable",
+    "description": "Erreur de rôle introuvable"
+  },
+  "loadRolesFailed": {
+    "message": "Échec du chargement des rôles : $ERROR$",
+    "description": "Erreur générale de chargement des rôles",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "Délai d'attente réseau"
+      }
+    }
+  },
+  "refreshFailed": {
+    "message": "Échec de l'actualisation : $ERROR$",
+    "description": "Échec de l'opération d'actualisation",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "Connexion perdue"
+      }
+    }
+  },
+  "roleCritical": {
+    "message": "Critique",
+    "description": "Type de rôle critique"
+  },
+  "roleHigh": {
+    "message": "Élevé",
+    "description": "Type de rôle à privilèges élevés"
+  },
+  "roleMedium": {
+    "message": "Moyen",
+    "description": "Type de rôle à privilèges moyens"
+  },
+  "serviceAzure": {
+    "message": "Azure",
+    "description": "Service Azure"
+  },
+  "serviceEntraId": {
+    "message": "Entra ID",
+    "description": "Service Entra ID"
+  },
+  "serviceMicrosoft365": {
+    "message": "Microsoft 365",
+    "description": "Service Microsoft 365"
+  },
+  "directoryScope": {
+    "message": "Répertoire",
+    "description": "Portée du répertoire"
+  },
+  "hoursFormat": {
+    "message": "$HOURS$ heure$PLURAL$",
+    "description": "Format des heures",
+    "placeholders": {
+      "hours": {
+        "content": "$1",
+        "example": "2"
+      },
+      "plural": {
+        "content": "$2",
+        "example": "s"
+      }
+    }
+  },
+  "timeFormatHoursMinutes": {
+    "message": "$HOURS$h $MINUTES$m",
+    "description": "Format de temps avec heures et minutes",
+    "placeholders": {
+      "hours": {
+        "content": "$1",
+        "example": "2"
+      },
+      "minutes": {
+        "content": "$2",
+        "example": "30"
+      }
+    }
+  },
+  "timeFormatMinutes": {
+    "message": "$MINUTES$m",
+    "description": "Format de temps avec minutes seulement",
+    "placeholders": {
+      "minutes": {
+        "content": "$1",
+        "example": "45"
+      }
+    }
+  }
+}

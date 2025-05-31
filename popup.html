@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Azure PIM Helper</title>
+  <title data-i18n="defaultTitle">Azure PIM Helper</title>
   <style>
     html, body {
       width: 520px !important;
@@ -22,7 +22,7 @@
   <div id="loading-screen" class="loading-screen">
     <div class="loading-content">
       <div class="spinner"></div>
-      <p>Loading role data...</p>
+      <p data-i18n="loadingRoles">Loading role data...</p>
     </div>
   </div>
 
@@ -34,16 +34,19 @@
         <div class="title-section">
           <div class="icon">🛡️</div>
           <div>
-            <h1>Azure PIM Helper</h1>
-            <p>Manage your privileged role lifecycle</p>
+            <h1 data-i18n="headerTitle">Azure PIM Helper</h1>
+            <p data-i18n="headerSubtitle">Manage your privileged role lifecycle</p>
           </div>
         </div>
         
         <div class="header-actions">
-          <button id="refresh-btn" class="btn btn-icon" title="Refresh roles">
+          <button id="language-toggle" class="btn btn-icon" data-i18n-title="languageTooltip" title="Switch language">
+            <span id="language-icon">🌐</span>
+          </button>
+          <button id="refresh-btn" class="btn btn-icon" data-i18n-title="refreshTooltip" title="Refresh roles">
             <span class="refresh-icon">🔄</span>
           </button>
-          <button id="theme-toggle" class="btn btn-icon" title="Toggle theme">
+          <button id="theme-toggle" class="btn btn-icon" data-i18n-title="themeTooltip" title="Toggle theme">
             <span id="theme-icon">☀️</span>
           </button>
         </div>
@@ -55,13 +58,13 @@
     <!-- Navigation Tabs -->
     <nav class="tabs">
       <button class="tab-trigger active" data-tab="eligible">
-        Eligible (<span id="eligible-count">0</span>)
+        <span data-i18n="tabEligible">Eligible</span> (<span id="eligible-count">0</span>)
       </button>
       <button class="tab-trigger" data-tab="active">
-        Active (<span id="active-count">0</span>)
+        <span data-i18n="tabActive">Active</span> (<span id="active-count">0</span>)
       </button>
       <button class="tab-trigger" data-tab="expiring">
-        Expiring (<span id="expiring-count">0</span>)
+        <span data-i18n="tabExpiring">Expiring</span> (<span id="expiring-count">0</span>)
         <span class="warning-icon" style="display: none;">⚠️</span>
       </button>
     </nav>

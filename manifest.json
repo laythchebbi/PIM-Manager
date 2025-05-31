@@ -1,9 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "Azure PIM Helper",
-  "description": "Streamline Azure Privileged Identity Management with easy role activation and monitoring",
+  "name": "__MSG_extName__",
+  "description": "__MSG_extDescription__",
   "version": "2.0",
   "author": "Cybersecurity Team",
+  "default_locale": "en",
   
   "permissions": [
     "identity",
@@ -23,7 +24,7 @@
   
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Azure PIM Helper",
+    "default_title": "__MSG_defaultTitle__",
     "default_icon": {
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png",
