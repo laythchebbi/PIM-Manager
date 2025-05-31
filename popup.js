@@ -1,5 +1,5 @@
 // Azure PIM Helper - Chrome Extension Popup
-// Vanilla JavaScript implementation for Chrome Extension
+// Fixed version with background script recovery
 
 class AzurePIMHelper {
   constructor() {
@@ -19,7 +19,38 @@ class AzurePIMHelper {
   async init() {
     this.setupEventListeners();
     this.applyTheme('light');
+    
+    // Wait a moment for background script to initialize
+    await this.ensureBackgroundScript();
     await this.loadRoles();
+  }
+
+  // Ensure background script is running
+  async ensureBackgroundScript() {
+    try {
+      console.log('Checking background script...');
+      const response = await this.sendMessage({ action: 'getAuthStatus' }, 5000);
+      if (response && response.success !== undefined) {
+        console.log('Background script is running');
+        return true;
+      }
+    } catch (error) {
+      console.warn('Background script not responding, attempting to wake up...');
+    }
+
+    // Try to wake up the background script
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await this.sendMessage({ action: 'getAuthStatus' }, 10000);
+      if (response && response.success !== undefined) {
+        console.log('Background script is now running');
+        return true;
+      }
+    } catch (error) {
+      console.error('Failed to establish connection with background script');
+      this.showStatus('error', 'Extension service is not responding. Please reload the extension.');
+      return false;
+    }
   }
 
   setupEventListeners() {
@@ -56,23 +87,48 @@ class AzurePIMHelper {
     });
   }
 
-  // Chrome extension messaging
-async sendMessage(message) {
-  console.log('Sending message to background:', message);
-  
-  return new Promise((resolve) => {
-    chrome.runtime.sendMessage(message, (response) => {
-      console.log('Received response from background:', response);
-      
-      if (chrome.runtime.lastError) {
-        console.error('Runtime error:', chrome.runtime.lastError);
-        resolve({ success: false, error: chrome.runtime.lastError.message });
-      } else {
-        resolve(response);
+  // Enhanced Chrome extension messaging with retry logic and better error handling
+  async sendMessage(message, timeout = 15000, retries = 2) {
+    console.log('Sending message to background:', message);
+    
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const response = await new Promise((resolve, reject) => {
+          const timeoutId = setTimeout(() => {
+            reject(new Error('Request timeout'));
+          }, timeout);
+          
+          chrome.runtime.sendMessage(message, (response) => {
+            clearTimeout(timeoutId);
+            
+            if (chrome.runtime.lastError) {
+              reject(new Error(chrome.runtime.lastError.message));
+            } else {
+              resolve(response);
+            }
+          });
+        });
+
+        console.log('Received response from background:', response);
+        return response || { success: false, error: 'Empty response' };
+
+      } catch (error) {
+        console.warn(`Attempt ${attempt + 1} failed:`, error.message);
+        
+        if (attempt === retries) {
+          // Last attempt failed
+          if (error.message.includes('Could not establish connection') || 
+              error.message.includes('Receiving end does not exist')) {
+            throw new Error('Extension service worker is not responding. Please reload the extension.');
+          }
+          throw error;
+        }
+        
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
       }
-    });
-  });
-}
+    }
+  }
 
   // Theme management
   applyTheme(theme) {
@@ -159,27 +215,46 @@ async sendMessage(message) {
     return role;
   }
 
-  // Load roles from background script
+  // Optimized role loading with proper error handling
   async loadRoles() {
     try {
-      this.setLoading(true);
+      this.setLoadingWithProgress('Connecting to extension service...');
       this.clearStatus();
+      console.log('Starting role loading...');
+      const overallStartTime = performance.now();
 
-      // Load eligible roles
-      const eligibleResponse = await this.sendMessage({ action: 'listEligibleRoles' });
-      if (!eligibleResponse.success) {
-        throw new Error(eligibleResponse.error || 'Failed to load eligible roles');
+      // Ensure background script is responsive
+      const backgroundReady = await this.ensureBackgroundScript();
+      if (!backgroundReady) {
+        throw new Error('Extension service is not available');
       }
 
-      // Load active roles
-      const activeResponse = await this.sendMessage({ action: 'listActiveRoles' });
-      if (!activeResponse.success) {
-        throw new Error(activeResponse.error || 'Failed to load active roles');
+      // Load both eligible and active roles in parallel for faster loading
+      this.setLoadingWithProgress('Fetching roles from Azure...');
+      const [eligibleResponse, activeResponse] = await Promise.all([
+        this.sendMessage({ action: 'listEligibleRoles' }),
+        this.sendMessage({ action: 'listActiveRoles' })
+      ]);
+
+      // Check for errors
+      if (!eligibleResponse || !eligibleResponse.success) {
+        throw new Error(eligibleResponse?.error || 'Failed to load eligible roles');
+      }
+
+      if (!activeResponse || !activeResponse.success) {
+        throw new Error(activeResponse?.error || 'Failed to load active roles');
       }
 
       // Convert and categorize roles
-      const eligible = eligibleResponse.data.value.map(role => this.convertApiRole(role, 'eligible'));
-      const active = activeResponse.data.value.map(role => this.convertApiRole(role, 'active'));
+      this.setLoadingWithProgress('Processing role data...');
+      console.log('Converting role data...');
+      const convertStartTime = performance.now();
+      
+      const eligible = (eligibleResponse.data?.value || []).map(role => this.convertApiRole(role, 'eligible'));
+      const active = (activeResponse.data?.value || []).map(role => this.convertApiRole(role, 'active'));
+      
+      const convertEndTime = performance.now();
+      console.log(`Role conversion took ${(convertEndTime - convertStartTime).toFixed(2)}ms`);
       
       // Separate expiring roles (less than 1 hour remaining)
       const now = new Date();
@@ -189,16 +264,35 @@ async sendMessage(message) {
         return diff <= 60 * 60 * 1000; // Less than 1 hour
       });
 
+      // Update state
       this.eligibleRoles = eligible;
       this.activeRoles = active;
       this.expiringRoles = expiring;
       
+      const overallEndTime = performance.now();
+      console.log(`Total loading time: ${(overallEndTime - overallStartTime).toFixed(2)}ms`);
+      
+      // Update UI
+      this.setLoadingWithProgress('Updating interface...');
       this.updateLastRefresh();
       this.renderRoles();
       this.updateTabCounts();
 
+      // Show performance info in success message
+      const loadTime = Math.round(overallEndTime - overallStartTime);
+      this.showStatus('success', `Loaded ${eligible.length + active.length} roles in ${loadTime}ms`);
+
     } catch (error) {
-      this.showStatus('error', `Failed to load roles: ${error.message}`);
+      console.error('Role loading error:', error);
+      
+      // Show specific error messages for common issues
+      if (error.message.includes('service worker') || error.message.includes('extension service')) {
+        this.showStatus('error', 'Extension service not responding. Try reloading the extension.');
+      } else if (error.message.includes('authentication') || error.message.includes('token')) {
+        this.showStatus('error', 'Authentication required. Click refresh to sign in.');
+      } else {
+        this.showStatus('error', `Failed to load roles: ${error.message}`);
+      }
     } finally {
       this.setLoading(false);
       this.refreshing = false;
@@ -208,57 +302,63 @@ async sendMessage(message) {
   async handleRefresh() {
     this.refreshing = true;
     this.updateRefreshButton();
-    await this.loadRoles();
-    this.updateRefreshButton();
-  }
-
-// Updated method in your popup.js handleActivateRole function:
-async handleActivateRole(roleId, roleName) {
-  this.activatingRoles.add(roleId);
-  this.updateRoleButton(roleId, 'activating');
-  this.clearStatus();
-
-  try {
-    const role = this.eligibleRoles.find(r => r.id === roleId);
-    if (!role) throw new Error('Role not found');
-
-    console.log('Activating role:', role);
-
-    // Prepare the eligibility object with correct structure
-    const eligibilityData = {
-      roleDefinitionId: role.roleDefinitionId,
-      principalId: role.principalId,
-      directoryScopeId: role.directoryScopeId || '/'
-    };
-
-    console.log('Eligibility data:', eligibilityData);
-
-    const response = await this.sendMessage({
-      action: 'activateRole',
-      eligibility: eligibilityData,
-      duration: 'PT1H', // 1 hour
-      justification: 'Role activation requested via PIM Helper extension'
-    });
-
-    console.log('Activation response:', response);
-
-    if (!response.success) {
-      throw new Error(response.error || 'Activation failed');
-    }
-
-    this.showStatus('success', `Successfully activated ${roleName}`);
     
-    // Wait a bit longer before refreshing to allow Azure to process
-    setTimeout(() => this.loadRoles(), 3000);
-
-  } catch (error) {
-    console.error('Activation error:', error);
-    this.showStatus('error', `Failed to activate ${roleName}: ${error.message}`);
-  } finally {
-    this.activatingRoles.delete(roleId);
-    this.updateRoleButton(roleId, 'normal');
+    try {
+      await this.loadRoles();
+    } catch (error) {
+      console.error('Refresh error:', error);
+      this.showStatus('error', `Refresh failed: ${error.message}`);
+    } finally {
+      this.updateRefreshButton();
+    }
   }
-}
+
+  async handleActivateRole(roleId, roleName) {
+    this.activatingRoles.add(roleId);
+    this.updateRoleButton(roleId, 'activating');
+    this.clearStatus();
+
+    try {
+      const role = this.eligibleRoles.find(r => r.id === roleId);
+      if (!role) throw new Error('Role not found');
+
+      console.log('Activating role:', role);
+
+      // Prepare the eligibility object with correct structure
+      const eligibilityData = {
+        roleDefinitionId: role.roleDefinitionId,
+        principalId: role.principalId,
+        directoryScopeId: role.directoryScopeId || '/'
+      };
+
+      console.log('Eligibility data:', eligibilityData);
+
+      const response = await this.sendMessage({
+        action: 'activateRole',
+        eligibility: eligibilityData,
+        duration: 'PT1H', // 1 hour
+        justification: 'Role activation requested via PIM Helper extension'
+      });
+
+      console.log('Activation response:', response);
+
+      if (!response || !response.success) {
+        throw new Error(response?.error || 'Activation failed');
+      }
+
+      this.showStatus('success', `Successfully activated ${roleName}`);
+      
+      // Wait a bit longer before refreshing to allow Azure to process
+      setTimeout(() => this.loadRoles(), 3000);
+
+    } catch (error) {
+      console.error('Activation error:', error);
+      this.showStatus('error', `Failed to activate ${roleName}: ${error.message}`);
+    } finally {
+      this.activatingRoles.delete(roleId);
+      this.updateRoleButton(roleId, 'normal');
+    }
+  }
 
   async handleExtendRole(roleId, roleName) {
     this.extendingRoles.add(roleId);
@@ -279,8 +379,8 @@ async handleActivateRole(roleId, roleName) {
         }
       });
 
-      if (!response.success) {
-        throw new Error(response.error || 'Extension failed');
+      if (!response || !response.success) {
+        throw new Error(response?.error || 'Extension failed');
       }
 
       this.showStatus('success', `Extended ${roleName} for additional time`);
@@ -299,6 +399,16 @@ async handleActivateRole(roleId, roleName) {
     this.loading = loading;
     document.getElementById('loading-screen').style.display = loading ? 'flex' : 'none';
     document.getElementById('main-content').style.display = loading ? 'none' : 'block';
+  }
+
+  setLoadingWithProgress(message = 'Loading role data...') {
+    this.loading = true;
+    const loadingScreen = document.getElementById('loading-screen');
+    const loadingContent = loadingScreen.querySelector('.loading-content p');
+    
+    loadingScreen.style.display = 'flex';
+    loadingContent.textContent = message;
+    document.getElementById('main-content').style.display = 'none';
   }
 
   updateRefreshButton() {
@@ -349,39 +459,70 @@ async handleActivateRole(roleId, roleName) {
     }
   }
 
+  // Optimized rendering methods
   renderRoles() {
-    this.renderEligibleRoles();
-    this.renderActiveRoles();
-    this.renderExpiringRoles();
+    const renderStartTime = performance.now();
+    
+    this.renderEligibleRolesOptimized();
+    this.renderActiveRolesOptimized();
+    this.renderExpiringRolesOptimized();
+    
+    const renderEndTime = performance.now();
+    console.log(`Role rendering took ${(renderEndTime - renderStartTime).toFixed(2)}ms`);
   }
 
-  renderEligibleRoles() {
+  renderEligibleRolesOptimized() {
     const container = document.getElementById('eligible-roles');
     if (this.eligibleRoles.length === 0) {
       container.innerHTML = this.getEmptyStateHTML('👑', 'No eligible roles available');
       return;
     }
 
-    container.innerHTML = this.eligibleRoles.map(role => this.getRoleItemHTML(role, 'eligible')).join('');
+    const fragment = document.createDocumentFragment();
+    const tempDiv = document.createElement('div');
+    
+    const roleHTML = this.eligibleRoles.map(role => this.getRoleItemHTML(role, 'eligible')).join('');
+    tempDiv.innerHTML = roleHTML;
+    
+    while (tempDiv.firstChild) {
+      fragment.appendChild(tempDiv.firstChild);
+    }
+    
+    container.innerHTML = '';
+    container.appendChild(fragment);
   }
 
-  renderActiveRoles() {
+  renderActiveRolesOptimized() {
     const container = document.getElementById('active-roles');
     if (this.activeRoles.length === 0) {
       container.innerHTML = this.getEmptyStateHTML('✅', 'No active roles currently');
       return;
     }
 
-    container.innerHTML = this.activeRoles.map(role => this.getRoleItemHTML(role, 'active')).join('');
+    const fragment = document.createDocumentFragment();
+    const tempDiv = document.createElement('div');
+    
+    const roleHTML = this.activeRoles.map(role => this.getRoleItemHTML(role, 'active')).join('');
+    tempDiv.innerHTML = roleHTML;
+    
+    while (tempDiv.firstChild) {
+      fragment.appendChild(tempDiv.firstChild);
+    }
+    
+    container.innerHTML = '';
+    container.appendChild(fragment);
   }
 
-  renderExpiringRoles() {
+  renderExpiringRolesOptimized() {
     const container = document.getElementById('expiring-roles');
     if (this.expiringRoles.length === 0) {
       container.innerHTML = this.getEmptyStateHTML('🕐', 'No roles expiring soon');
       return;
     }
 
+    const fragment = document.createDocumentFragment();
+    const tempDiv = document.createElement('div');
+    
     let html = '';
     if (this.expiringRoles.length > 0) {
       html += `
@@ -393,7 +534,14 @@ async handleActivateRole(roleId, roleName) {
     }
     
     html += this.expiringRoles.map(role => this.getRoleItemHTML(role, 'expiring')).join('');
-    container.innerHTML = html;
+    tempDiv.innerHTML = html;
+    
+    while (tempDiv.firstChild) {
+      fragment.appendChild(tempDiv.firstChild);
+    }
+    
+    container.innerHTML = '';
+    container.appendChild(fragment);
   }
 
   getRoleItemHTML(role, type) {
