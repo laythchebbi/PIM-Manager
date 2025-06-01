@@ -4,10 +4,11 @@
 
 ![Azure PIM Helper Logo](https://img.shields.io/badge/Azure-PIM%20Helper-0078d4?style=for-the-badge&logo=microsoft-azure&logoColor=white)
 
-**A beautiful, fast, and intuitive Chrome extension for managing Azure Privileged Identity Management roles with proactive expiration notifications**
+**A beautiful, fast, and intuitive Chrome extension for managing Azure Privileged Identity Management roles with proactive expiration notifications and multi-tenant support**
 
 [![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-4285f4?style=for-the-badge&logo=google-chrome&logoColor=white)](https://chrome.google.com/webstore)
 [![Microsoft Graph](https://img.shields.io/badge/Microsoft-Graph%20API-00bcf2?style=for-the-badge&logo=microsoft&logoColor=white)](https://graph.microsoft.com)
+[![Multi-Tenant](https://img.shields.io/badge/Multi-Tenant-Supported-success?style=for-the-badge)](https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-convert-app-to-be-multi-tenant)
 [![JavaScript](https://img.shields.io/badge/JavaScript-ES6+-f7df1e?style=for-the-badge&logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
 
 *Made with ❤️ from Tunisia by **Layth CHEBBI** 🇹🇳*
@@ -19,6 +20,13 @@
 </div>
 
 ## ✨ Features
+
+### 🌍 **Multi-Tenant Support** ⭐ *NEW!*
+- **Works across any Microsoft Entra ID tenant** - No configuration needed per tenant
+- **Automatic tenant detection** and context switching
+- **Universal deployment** - Single extension for all your organizations
+- **Seamless cross-tenant experience** with unified authentication
+- **Enterprise-ready** for organizations with multiple Entra ID tenants
 
 ### 🚀 **Lightning Fast Performance**
 - **Parallel API calls** for instant role loading
@@ -48,8 +56,8 @@
 - **Browser language auto-detection** on first use
 
 ### 🔐 **Advanced Security Features**
-- **Azure AD integration** with PKCE authentication
-- **Implicit OAuth flow** for maximum compatibility
+- **Microsoft Entra ID integration** with PKCE authentication
+- **Multi-tenant OAuth flow** for universal compatibility
 - **Real-time justification detection** from Azure PIM policies
 - **Role-based access indicators** (Critical • High • Medium)
 
@@ -70,6 +78,7 @@
 ### ⚙️ **Comprehensive Settings** ⭐ *NEW!*
 - **Notification preferences** with customizable warning times
 - **Authentication management** with re-auth and sign-out options
+- **Tenant information display** showing current organization
 - **Sound notification controls** and persistence settings
 - **About section** with version and feature information
 
@@ -79,6 +88,7 @@
 - **🔒 Critical Role** badges for high-privilege access
 - **Real-time status updates** with live countdowns
 - **🔔 Notification status** indicators throughout the interface
+- **🏢 Tenant context** showing current organization
 
 ---
 
@@ -93,6 +103,28 @@
 | **Microsoft 365** | ![M365](https://img.shields.io/badge/-Microsoft%20365-d83b01?style=flat&logo=microsoft-office&logoColor=white) | Exchange Administrator, SharePoint Administrator |
 
 </div>
+
+---
+
+## 🌍 Multi-Tenant Architecture
+
+### 🏢 **Universal Compatibility**
+- **Single extension installation** works across all your Entra ID tenants
+- **No per-tenant configuration** required - works out of the box
+- **Automatic tenant discovery** from user authentication
+- **Seamless context switching** between organizations
+
+### 🔐 **Secure Multi-Tenant Authentication**
+- **Microsoft common endpoint** (`login.microsoftonline.com/common`)
+- **Dynamic tenant resolution** based on user credentials
+- **Isolated tenant contexts** for security and compliance
+- **Admin consent flow support** for enterprise deployments
+
+### 🎯 **Enterprise Deployment Ready**
+- **Chrome Web Store distribution** for easy organization-wide deployment
+- **Works with guest accounts** across multiple tenants
+- **Conditional Access policy compliance** with MFA support
+- **Enterprise application catalog compatible**
 
 ---
 
@@ -149,8 +181,8 @@ The extension supports both **English** and **French** with seamless switching:
 
 <div align="center">
 
-### 🌟 Main Interface with Notifications
-*Elegant role management with proactive expiration alerts*
+### 🌟 Main Interface with Multi-Tenant Support
+*Elegant role management with tenant context awareness*
 
 ![Main Interface](images/img2.png)
 
@@ -159,23 +191,23 @@ The extension supports both **English** and **French** with seamless switching:
 
 ![Notification Settings](images/img6.png)
 
-### 🌐 Multi-Language Support
-*Seamless language switching with flag icons*
+### 🌍 Multi-Tenant Organization Display
+*Shows current tenant and organization context*
 
-![Language Support](images/img3.png)
+![Multi-Tenant Support](images/img3.png)
 
 ### 📝 Intelligent Justification Detection
-*Real-time Azure PIM policy analysis*
+*Real-time Azure PIM policy analysis across tenants*
 
 ![Justification Detection](images/img1.png)
 
-### ⚙️ Enhanced Settings Tab ⭐ *NEW!*
-*Complete control over authentication and preferences*
+### ⚙️ Enhanced Settings with Tenant Info ⭐ *NEW!*
+*Complete control over authentication and tenant context*
 
 ![Settings Tab](images/img7.png)
 
-### 🌙 Dark Theme with Notifications
-*Beautiful dark mode with notification support*
+### 🌙 Dark Theme with Multi-Tenant Support
+*Beautiful dark mode with tenant-aware notifications*
 
 ![Dark Theme](images/img1.png)
 
@@ -186,73 +218,143 @@ The extension supports both **English** and **French** with seamless switching:
 ## 🚀 Installation
 
 ### Prerequisites
-- Google Chrome or Chromium-based browser
-- Azure AD account with PIM-eligible roles
-- Azure AD application registration with appropriate permissions
+- Google Chrome or Chromium-based browser (version 88+)
+- Microsoft Entra ID account with PIM-eligible roles
+- ⭐ **No configuration required** - Extension is pre-configured for multi-tenant support!
 
-### Quick Start
+### 🎯 **Option 1: Chrome Web Store (Recommended)** ⭐ *NEW!*
 
-1. **Clone the repository**
+**🔗 [Install from Chrome Web Store](https://chrome.google.com/webstore/detail/azure-pim-helper/[extension-id])**
+
+1. **One-Click Installation**
+   - Click the link above or search "Azure PIM Helper" in Chrome Web Store
+   - Click **"Add to Chrome"**
+   - Confirm installation when prompted
+
+2. **Grant Permissions**
+   - Allow browser notifications when prompted
+   - Grant identity permissions for Microsoft Entra ID authentication
+
+3. **Start Using Immediately** 🚀
+   - Click the extension icon in your Chrome toolbar
+   - Sign in with your Microsoft Entra ID account
+   - **Works with any tenant** - No additional configuration needed!
+
+4. **Configure Notifications** (Optional)
+   - Enable notification monitoring in the Settings tab
+   - Customize warning times and preferences
+   - Set up emergency extension options
+
+**🎉 That's it! The extension is ready to use with any Microsoft Entra ID tenant.**
+
+---
+
+### 🏢 **Option 2: Enterprise Deployment**
+
+For IT administrators deploying organization-wide:
+
+#### **🔐 Admin Consent (Recommended for Enterprises)**
+```
+https://login.microsoftonline.com/common/adminconsent?client_id=91ed420f-07a9-4c4a-9b55-dc4468a9225b
+```
+- Visit the URL above as a Global Administrator
+- Grant consent for your organization
+- Users can then install from Chrome Web Store without individual consent
+
+#### **📋 Chrome Enterprise Policies**
+```json
+{
+  "ExtensionInstallForcelist": [
+    "azure-pim-helper-extension-id;https://clients2.google.com/service/update2/crx"
+  ],
+  "ExtensionSettings": {
+    "azure-pim-helper-extension-id": {
+      "installation_mode": "force_installed",
+      "update_url": "https://clients2.google.com/service/update2/crx"
+    }
+  }
+}
+```
+
+#### **🎯 Microsoft Intune Deployment**
+- Add Chrome Web Store app to Intune
+- Configure automatic installation for managed devices
+- Set up conditional access policies if required
+
+---
+
+### 🛠️ **Option 3: Developer Installation**
+
+For developers and advanced users:
+
+1. **Clone the Repository**
    ```bash
    git clone https://github.com/laythchebbi/azure-pim-helper.git
    cd azure-pim-helper
    ```
 
-2. **Configure Azure AD App**
-   ```javascript
-   // Update CLIENT_ID and TENANT_ID in background.js
-   const CONFIG = {
-     CLIENT_ID: 'your-client-id-here',
-     TENANT_ID: 'your-tenant-id-here',
-     // ...
-   };
-   ```
-
-3. **Create the localization structure**
-   ```
-   your-extension/
-   ├── _locales/
-   │   ├── en/
-   │   │   └── messages.json
-   │   └── fr/
-   │       └── messages.json
-   ├── manifest.json
-   ├── popup.html
-   ├── popup.css
-   ├── popup.js
-   └── background.js
-   ```
-
-4. **Load in Chrome**
+2. **Load as Unpacked Extension**
    - Open `chrome://extensions/`
-   - Enable "Developer mode"
+   - Enable "Developer mode" (top right toggle)
    - Click "Load unpacked"
    - Select the project folder
 
-5. **Grant Notification Permission** ⭐ *NEW!*
+3. **Enable Notifications**
    - Allow browser notifications when prompted
-   - Configure notification preferences in Settings tab
+   - Test notification functionality in Settings tab
 
-6. **Authenticate & Enjoy!** 🎉
+4. **Ready for Development** 🚀
+   - Extension works immediately with any Entra ID tenant
+   - No additional Azure app registration needed
+   - Modify source code as needed for customization
+
+---
+
+### 🌍 **Multi-Tenant Benefits**
+
+✅ **Universal Compatibility** - Works with any Microsoft Entra ID tenant  
+✅ **Zero Configuration** - No per-tenant setup required  
+✅ **Instant Deployment** - Install once, use everywhere  
+✅ **Enterprise Ready** - Admin consent and policy support  
+✅ **Guest Account Support** - Works with B2B scenarios  
+✅ **Automatic Updates** - Chrome Web Store handles updates  
+
+---
+
+### 🚨 **Important Notes**
+
+📢 **For Individual Users**: Simply install from Chrome Web Store - no additional setup needed!
+
+📢 **For Enterprise IT**: Consider using admin consent for seamless user experience.
+
+📢 **For Developers**: The extension is pre-configured with a multi-tenant Azure app registration.
+
+📢 **Security**: All authentication is handled securely through Microsoft's OAuth 2.0 flow.
 
 ---
 
 ## 🎮 Usage
 
+### 🌍 **Multi-Tenant Experience**
+- **Automatic tenant detection** - Extension works with your current Entra ID context
+- **Tenant switching** - Sign out and sign in with different tenant accounts
+- **Cross-tenant role management** - Manage roles across multiple organizations
+- **Guest account support** - Works seamlessly with B2B guest access
+
 ### 📋 **View Eligible Roles**
-Browse your PIM-eligible roles with detailed information including max duration, scope, and service categorization.
+Browse your PIM-eligible roles with detailed information including max duration, scope, and service categorization across any tenant.
 
 ### ⚡ **Quick Activation**
-Click the "Activate" button to instantly activate roles with appropriate justification handling.
+Click the "Activate" button to instantly activate roles with appropriate justification handling, regardless of your tenant.
 
 ### ⏰ **Monitor Active Roles**
-Track your active role assignments with real-time expiration countdowns and extension options.
+Track your active role assignments with real-time expiration countdowns and extension options across all your tenants.
 
 ### 🔔 **Proactive Notifications** ⭐ *NEW!*
 - **Enable notifications** via the toggle in the notification panel
 - **Receive browser alerts** 15 minutes before role expiration
 - **Take action directly** from notifications (Extend/Dismiss)
-- **Monitor multiple roles** simultaneously with smart management
+- **Monitor multiple roles** simultaneously across tenants
 
 ### 🚨 **Emergency Management** ⭐ *NEW!*
 - **Quick Extend All** - Extend expiring roles by 30 minutes
@@ -262,11 +364,12 @@ Track your active role assignments with real-time expiration countdowns and exte
 
 ### ⚙️ **Settings Management** ⭐ *NEW!*
 - **Authentication control** - Re-authenticate or sign out
+- **Tenant information** - View current organization and user context
 - **Notification preferences** - Customize warning times and sounds
 - **About information** - View version and feature details
 
 ### 🌐 **Language Switching**
-Use the flag icon (🇺🇸/🇫🇷) in the header to instantly switch between English and French interfaces.
+Use the flag icon (🇺🇸/🇫🇷) in the header to instantly switch between English and French interfaces across all tenants.
 
 ### 📝 **Smart Justification**
 The extension automatically detects which roles require justification by:
@@ -274,28 +377,49 @@ The extension automatically detects which roles require justification by:
 - Analyzing `EndUser/Assignment` enablement rules  
 - Checking for "Justification" in the `enabledRules` array
 - Displaying accurate justification badges only when needed
+- **Works across all tenants** with proper policy detection
 
 ---
 
 ## 🛠️ Technical Architecture
 
-### 📦 **Extension Structure**
+### 📦 **Multi-Tenant Extension Structure**
 ```
 azure-pim-helper/
-├── 📄 manifest.json          # Extension configuration with notifications
-├── 🎨 popup.html             # Enhanced UI with notification panel
-├── 💅 popup.css              # Beautiful styling with notification themes
-├── ⚡ popup.js               # Frontend logic with notification controls
-├── 🔧 background.js          # Service worker with notification system
+├── 📄 manifest.json          # Multi-tenant configuration
+├── 🎨 popup.html             # Enhanced UI with tenant context
+├── 💅 popup.css              # Beautiful styling with tenant themes
+├── ⚡ popup.js               # Frontend logic with tenant controls
+├── 🔧 background.js          # Service worker with multi-tenant auth
 ├── 🌐 _locales/              # Internationalization files
 │   ├── en/messages.json      # English translations (enhanced)
 │   └── fr/messages.json      # French translations (enhanced)
 └── 🎯 icons/                 # Extension icons (48px for notifications)
 ```
 
+### 🌍 **Multi-Tenant Authentication Flow** ⭐ *NEW!*
+```javascript
+// Multi-tenant authentication configuration
+const CONFIG = {
+  CLIENT_ID: '91ed420f-07a9-4c4a-9b55-dc4468a9225b',
+  TOKEN_ENDPOINT: 'https://login.microsoftonline.com/common', // Common endpoint
+  REDIRECT_URI: chrome.identity.getRedirectURL(),
+  SCOPES: [...] // Same scopes work across all tenants
+};
+
+// Automatic tenant extraction from token
+const tokenPayload = JSON.parse(atob(accessToken.split('.')[1]));
+const userTenant = {
+  tenantId: tokenPayload.tid,
+  tenantName: tokenPayload.iss,
+  userPrincipalName: tokenPayload.upn,
+  userName: tokenPayload.name
+};
+```
+
 ### 🔔 **Notification System Architecture** ⭐ *NEW!*
 ```javascript
-// Real-time role expiration monitoring
+// Real-time role expiration monitoring across tenants
 class NotificationManager {
   startMonitoring(graphClient) {
     // Check every minute for role expirations
@@ -323,14 +447,15 @@ class NotificationManager {
 
 ### 🔗 **API Integration**
 - **Microsoft Graph v1.0** for role management
-- **OAuth 2.0 Implicit Flow** for authentication
-- **Role Management APIs** for PIM operations
+- **Multi-tenant OAuth 2.0 Implicit Flow** for authentication
+- **Role Management APIs** for PIM operations across tenants
 - **Policy Management APIs** for justification detection
 - **Chrome Notifications API** for browser alerts ⭐ *NEW!*
+- **Automatic tenant context** handling via Graph API
 
 ### 🎯 **Enhanced Justification Detection System**
 ```javascript
-// Real-time Azure PIM policy analysis
+// Real-time Azure PIM policy analysis across any tenant
 const policyEndpoint = `/policies/roleManagementPolicyAssignments?$filter=scopeId eq '/' and roleDefinitionId eq '${roleId}'`;
 const policyData = await this.makeRequest(policyEndpoint);
 
@@ -351,10 +476,24 @@ const requiresJustification = enablementRule?.enabledRules?.includes('Justificat
 - **Debounced operations** for smooth interactions
 - **Embedded translations** for instant language switching
 - **Efficient notification management** with cleanup and deduplication ⭐ *NEW!*
+- **Tenant-aware caching** for multi-organization support
 
 ---
 
 ## 🎨 Customization
+
+### 🌍 **Multi-Tenant Configuration** ⭐ *NEW!*
+```javascript
+// Extension is pre-configured for multi-tenant support
+// No additional configuration needed per tenant!
+
+// Tenant information is automatically detected and stored
+const tenantInfo = {
+  tenantId: 'auto-detected',
+  tenantName: 'auto-detected',
+  userPrincipalName: 'auto-detected'
+};
+```
 
 ### 🔔 **Notification Configuration** ⭐ *NEW!*
 ```javascript
@@ -375,16 +514,20 @@ To add support for additional languages:
    mkdir _locales/es  # For Spanish
    ```
 
-2. **Add complete messages.json** (including notification messages)
+2. **Add complete messages.json** (including notification and tenant messages)
    ```json
    {
      "extName": {
        "message": "Asistente Azure PIM",
        "description": "Nombre de la extensión"
      },
-     "notificationSettings": {
-       "message": "Configuración de notificaciones",
-       "description": "Título del panel de notificaciones"
+     "multiTenantSupport": {
+       "message": "Soporte multi-tenant",
+       "description": "Etiqueta de soporte multi-tenant"
+     },
+     "currentTenant": {
+       "message": "Inquilino actual",
+       "description": "Etiqueta del inquilino actual"
      }
      // ... add all message translations
    }
@@ -400,27 +543,11 @@ To add support for additional languages:
    };
    ```
 
-### 🎯 **Justification Configuration**
-The extension automatically detects justification requirements from Azure PIM policies. No manual configuration needed!
-
-### 🎨 **Theme Customization**
-Modify CSS variables to match your organization's branding:
-
-```css
-:root {
-  --accent-color: #your-brand-color;
-  --bg-primary: #your-background;
-  --text-primary: #your-text-color;
-  --notification-bg: #your-notification-background;
-  --notification-border: #your-notification-border;
-}
-```
-
 ---
 
 ## 🔒 Security & Permissions
 
-### Required Azure AD Permissions
+### Required Microsoft Entra ID Permissions
 - `RoleManagement.ReadWrite.Directory`
 - `PrivilegedAccess.ReadWrite.AzureResources`
 - `RoleAssignmentSchedule.ReadWrite.Directory`
@@ -430,14 +557,22 @@ Modify CSS variables to match your organization's branding:
 ### Required Chrome Permissions ⭐ *NEW!*
 - `notifications` - For browser notification alerts
 - `alarms` - For precise timing of notification checks
-- `storage` - For saving notification preferences
+- `storage` - For saving notification and tenant preferences
 - `activeTab` - For popup interaction
+- `identity` - For multi-tenant OAuth authentication
+
+### 🌍 **Multi-Tenant Security Features** ⭐ *NEW!*
+- **Isolated tenant contexts** - Each tenant's data is kept separate
+- **Secure credential handling** - Tokens are tenant-specific
+- **Admin consent flow support** - Enterprise deployment ready
+- **Cross-tenant policy compliance** - Respects each tenant's PIM policies
+- **Guest account security** - Proper handling of B2B scenarios
 
 ### 🛡️ Security Features
-- **PKCE authentication** for secure token exchange
-- **Token caching** with automatic expiration
-- **Minimal permissions** principle
-- **Secure storage** of authentication data
+- **Multi-tenant PKCE authentication** for secure token exchange
+- **Tenant-aware token caching** with automatic expiration
+- **Minimal permissions** principle across all tenants
+- **Secure storage** of authentication data with tenant isolation
 - **Read-only policy access** for justification detection
 - **Safe notification handling** with proper cleanup ⭐ *NEW!*
 
@@ -447,12 +582,34 @@ Modify CSS variables to match your organization's branding:
 
 ### Common Issues
 
+**Multi-Tenant Authentication Errors** ⭐ *NEW!*
+```bash
+# Clear extension storage and re-authenticate
+chrome.storage.local.clear()
+# Sign out and sign in with correct tenant account
+# Verify admin consent is granted for your organization
+```
+
+**Tenant Context Issues** ⭐ *NEW!*
+```bash
+# Check current tenant info in Settings tab
+# Re-authenticate if tenant information is missing
+# Verify user has proper permissions in the target tenant
+```
+
 **Authentication Errors**
 ```bash
 # Clear extension storage
 chrome.storage.local.clear()
 # Reload extension and re-authenticate
+# Check admin consent status for your tenant
 ```
+
+**Cross-Tenant Role Access Issues** ⭐ *NEW!*
+- Verify you have PIM roles in the target tenant
+- Check if you're a guest user with proper access
+- Ensure your account is not blocked by Conditional Access policies
+- Verify the tenant allows external applications
 
 **Notification Issues** ⭐ *NEW!*
 ```bash
@@ -460,32 +617,32 @@ chrome.storage.local.clear()
 chrome.notifications.getPermissionLevel()
 # Verify notification toggle in extension popup
 # Check browser notification settings
+# Test with roles from different tenants
 ```
 
 **Role Loading Issues**
-- Verify Azure AD permissions
+- Verify Microsoft Entra ID permissions in target tenant
 - Check service worker console for API errors
-- Ensure proper tenant and client ID configuration
+- Ensure proper client ID configuration for multi-tenant app
+- Test with different tenant contexts
 
-**Justification Detection Issues**
-- Verify `Policy.Read.All` or `RoleManagementPolicy.Read.Directory` permissions
-- Check console logs for detailed policy API responses
-- Ensure admin consent is granted for policy permissions
-
-**Language Switching Issues**
-- Check browser console for translation errors
-- Verify `_locales` folder structure is correct
-- Clear extension storage if language preference is stuck
-
-**Performance Issues**
-- Check for browser extensions conflicts
-- Verify network connectivity to Microsoft Graph
-- Review console logs for detailed error information
-- Disable notification monitoring if experiencing high CPU usage
+**Admin Consent Issues** ⭐ *NEW!*
+- Contact your IT administrator for enterprise consent
+- Use the admin consent URL provided in installation section
+- Verify the application is approved in your tenant
+- Check Azure AD audit logs for consent decisions
 
 ---
 
 ## 🆕 What's New in v2.1
+
+### 🌍 **Multi-Tenant Support** ⭐ *MAJOR UPDATE!*
+- **Universal compatibility** with any Microsoft Entra ID tenant
+- **Automatic tenant detection** and context management
+- **No per-tenant configuration** required - works out of the box
+- **Enterprise deployment ready** with admin consent flow support
+- **Guest account support** for B2B scenarios
+- **Tenant information display** in Settings tab
 
 ### 🔔 **Proactive Notification System**
 - **15-minute browser notifications** before role expiration
@@ -493,9 +650,11 @@ chrome.notifications.getPermissionLevel()
 - **Real-time monitoring** with automatic cleanup
 - **Emergency extension options** for critical situations
 - **Customizable notification preferences** in Settings tab
+- **Multi-tenant notification support**
 
 ### ⚙️ **Enhanced Settings Management**
 - **Complete Settings tab** with authentication controls
+- **Tenant context display** showing current organization
 - **Notification preferences** with sound and persistence options
 - **Re-authentication** and sign-out functionality
 - **About section** with version and feature information
@@ -505,17 +664,20 @@ chrome.notifications.getPermissionLevel()
 - **Bulk Extend** - Extend multiple active roles simultaneously
 - **Quick Extend All** - 30-minute emergency extension
 - **Emergency Extend** - 4-hour extension for all active roles
+- **Cross-tenant operation support**
 
 ### 🎨 **UI/UX Improvements**
 - **Toast notification system** for non-intrusive feedback
 - **Dynamic button visibility** based on available actions
 - **Enhanced status indicators** throughout the interface
 - **Improved error handling** with specific recovery options
+- **Tenant-aware visual indicators**
 
 ### 🌐 **Expanded Multi-Language Support**
 - **Enhanced French translations** for all new features
 - **Complete notification localization** in both languages
 - **Settings and bulk action translations** added
+- **Multi-tenant terminology** in all supported languages
 - **Improved language switching** performance
 
 ---
@@ -528,24 +690,26 @@ We welcome contributions from the community! Here's how you can help:
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test thoroughly (including notification system)
+4. Test thoroughly (including multi-tenant scenarios) ⭐ *NEW!*
 5. Submit a pull request
 
 ### 📝 **Contribution Guidelines**
 - Follow existing code style and conventions
 - Add comprehensive comments for complex logic
-- Test all features across different role types
+- Test all features across different role types and tenants ⭐ *NEW!*
 - Update documentation for new features
 - Test language switching and translations
-- Test notification system thoroughly ⭐ *NEW!*
+- Test notification system across multiple tenants ⭐ *NEW!*
+- Verify multi-tenant compatibility ⭐ *NEW!*
 
 ### 🎯 **Areas for Contribution**
 - 🌍 **Additional language support** (Spanish, German, etc.)
-- 🔔 **Enhanced notification features** (custom sounds, rich notifications)
+- 🏢 **Enhanced multi-tenant features** (tenant switching, organization branding)
+- 🔔 **Advanced notification features** (custom sounds, rich notifications)
 - 🔍 **Advanced justification detection** algorithms
 - 🎨 **Additional themes** and customization options
-- 📊 **Analytics and reporting** features
-- 🔧 **Performance optimizations**
+- 📊 **Analytics and reporting** features across tenants
+- 🔧 **Performance optimizations** for multi-tenant scenarios
 - 📱 **Mobile support** improvements
 
 ---
@@ -553,23 +717,25 @@ We welcome contributions from the community! Here's how you can help:
 ## 📈 Roadmap
 
 ### 🎯 **Upcoming Features**
+- [ ] 🏢 **Tenant switching UI** within the extension
+- [ ] 🎨 **Organization branding** support per tenant
 - [ ] 🌍 **Additional languages** (Spanish, German, Portuguese)
-- [ ] 📊 **Role usage analytics** and reporting dashboard
+- [ ] 📊 **Cross-tenant role analytics** and reporting dashboard
 - [ ] 🔔 **Rich notifications** with custom sounds and images
 - [ ] 📱 **Mobile-responsive design** improvements
-- [ ] 🔄 **Advanced bulk operations** with filtering
-- [ ] 📋 **Role assignment history** and audit logs
-- [ ] 🎨 **Custom theme builder** with organization branding
+- [ ] 🔄 **Advanced bulk operations** with filtering across tenants
+- [ ] 📋 **Role assignment history** and audit logs per tenant
 - [ ] 🔗 **Integration with Microsoft Teams** and other services
 - [ ] 🤖 **AI-powered role recommendations** based on usage patterns
-- [ ] 📈 **Advanced PIM policy analytics** and compliance reporting
+- [ ] 📈 **Advanced PIM policy analytics** across multiple tenants
 
 ### ✅ **Recently Completed (v2.1)**
+- [x] 🌍 **Multi-tenant support** with automatic tenant detection
 - [x] 🔔 **Proactive notification system** with 15-minute warnings
-- [x] ⚙️ **Enhanced Settings tab** with comprehensive controls
+- [x] ⚙️ **Enhanced Settings tab** with tenant information display
 - [x] 🚀 **Bulk operations** for efficient role management
 - [x] 🎨 **Toast notification system** for better UX
-- [x] 🌐 **Expanded multi-language support** with notification localization
+- [x] 🌐 **Expanded multi-language support** with multi-tenant terminology
 
 ### ✅ **Previously Completed (v2.0)**
 - [x] 🌐 **Multi-language support** (English/French)
@@ -587,12 +753,14 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- **Microsoft Graph Team** for excellent API documentation
+- **Microsoft Graph Team** for excellent API documentation and multi-tenant support
 - **Azure PIM Team** for the powerful role management platform
+- **Microsoft Entra ID Team** for robust multi-tenant authentication capabilities
 - **Chrome Extensions Team** for the robust extension platform and notification APIs
 - **Open Source Community** for inspiration and best practices
 - **International contributors** for translation and localization support
-- **Security professionals** who provided feedback on notification security
+- **Security professionals** who provided feedback on multi-tenant security
+- **Enterprise customers** who requested and tested multi-tenant functionality
 
 ---
 
@@ -605,7 +773,8 @@ If you find this project helpful, please consider:
 - 💡 **Contributing** to the codebase
 - 📢 **Sharing** with your colleagues and community
 - 🌍 **Contributing translations** for new languages
-- 🔔 **Testing the notification system** and providing feedback
+- 🔔 **Testing the notification system** across different tenants
+- 🏢 **Testing multi-tenant scenarios** in your organization
 
 ---
 
@@ -614,7 +783,7 @@ If you find this project helpful, please consider:
 ### 🇹🇳 Made with ❤️ from Tunisia by **Layth CHEBBI**
 
 **Cybersecurity Engineer & Azure Specialist**  
-*Building world-class security tools for the global Azure community*
+*Building world-class security tools for the global Microsoft Entra ID community*
 
 [![GitHub](https://img.shields.io/badge/GitHub-LaythCHEBBI-181717?style=for-the-badge&logo=github)](https://github.com/laythchebbi)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Layth%20CHEBBI-0077B5?style=for-the-badge&logo=linkedin)](https://linkedin.com/in/laythchebbi)
@@ -624,8 +793,8 @@ If you find this project helpful, please consider:
 
 ---
 
-*Azure PIM Helper v2.1 - Simplifying privileged access management, one role at a time.*  
-*Now with intelligent multi-language support, real-time policy detection, and proactive expiration notifications!*
+*Azure PIM Helper v2.1 - Simplifying privileged access management across any Microsoft Entra ID tenant.*  
+*Now with intelligent multi-language support, real-time policy detection, proactive expiration notifications, and universal multi-tenant compatibility!*
 
 ![Visitors](https://visitor-badge.laobi.icu/badge?page_id=azure-pim-helper)
 [![GitHub stars](https://img.shields.io/github/stars/laythchebbi/azure-pim-helper?style=social)](https://github.com/laythchebbi/azure-pim-helper/stargazers)

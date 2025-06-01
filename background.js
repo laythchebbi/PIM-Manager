@@ -1,5 +1,5 @@
 // Enhanced Azure PIM Helper Background Script
-// With Role Expiration Notifications
+// With Role Expiration Notifications - Multi-Tenant Version
 
 console.log('Background script loading...');
 
@@ -8,10 +8,10 @@ function getMessage(messageKey, substitutions = []) {
   return chrome.i18n.getMessage(messageKey, substitutions);
 }
 
-// Configuration
+// Configuration - Updated for Multi-Tenant Support
 const CONFIG = {
   CLIENT_ID: '91ed420f-07a9-4c4a-9b55-dc4468a9225b',
-  TENANT_ID: '950b7e19-2824-48c8-9403-c811f39aa336',
+  // REMOVED: TENANT_ID - Now using 'common' endpoint for multi-tenant
   REDIRECT_URI: chrome.identity.getRedirectURL(),
   SCOPES: [
     'https://graph.microsoft.com/RoleManagement.ReadWrite.Directory',
@@ -22,10 +22,10 @@ const CONFIG = {
     'https://graph.microsoft.com/RoleManagementPolicy.Read.Directory'
   ],
   GRAPH_BASE_URL: 'https://graph.microsoft.com/v1.0',
-  TOKEN_ENDPOINT: 'https://login.microsoftonline.com'
+  TOKEN_ENDPOINT: 'https://login.microsoftonline.com/common' // Changed for multi-tenant
 };
 
-console.log('Configuration loaded:', { CLIENT_ID: CONFIG.CLIENT_ID, REDIRECT_URI: CONFIG.REDIRECT_URI });
+console.log('Multi-tenant configuration loaded:', { CLIENT_ID: CONFIG.CLIENT_ID, REDIRECT_URI: CONFIG.REDIRECT_URI });
 
 // Notification Manager for Role Expiration Warnings
 class NotificationManager {
@@ -376,13 +376,14 @@ class NotificationManager {
   }
 }
 
-// Token management - Simplified approach using Chrome Identity API
+// Token management - Updated for Multi-Tenant Support
 class TokenManager {
   constructor() {
     this.accessToken = null;
     this.refreshToken = null;
     this.tokenExpiry = null;
-    console.log('TokenManager initialized');
+    this.userTenant = null; // Added for tenant info storage
+    console.log('TokenManager initialized for multi-tenant');
   }
 
   async getValidToken() {
@@ -400,16 +401,17 @@ class TokenManager {
   }
 
   async authenticate() {
-    console.log('Starting Chrome Identity API authentication...');
+    console.log('Starting Chrome Identity API authentication for multi-tenant...');
     
     // Clear all storage
     await chrome.storage.local.clear();
     this.accessToken = null;
     this.refreshToken = null;
     this.tokenExpiry = null;
+    this.userTenant = null;
 
-    // Use Chrome's built-in OAuth2 flow which handles PKCE automatically
-    const authUrl = `${CONFIG.TOKEN_ENDPOINT}/${CONFIG.TENANT_ID}/oauth2/v2.0/authorize?` +
+    // Use Chrome's built-in OAuth2 flow with common endpoint for multi-tenant
+    const authUrl = `${CONFIG.TOKEN_ENDPOINT}/oauth2/v2.0/authorize?` +
       new URLSearchParams({
         client_id: CONFIG.CLIENT_ID,
         response_type: 'token', // Use implicit flow instead of authorization code
@@ -420,7 +422,7 @@ class TokenManager {
         nonce: Date.now().toString()
       });
 
-    console.log('Using implicit flow auth URL:', authUrl);
+    console.log('Using multi-tenant implicit flow auth URL:', authUrl);
 
     return new Promise((resolve, reject) => {
       chrome.identity.launchWebAuthFlow({
@@ -466,12 +468,33 @@ class TokenManager {
           this.accessToken = accessToken;
           this.tokenExpiry = Date.now() + (parseInt(expiresIn) * 1000);
 
-          await chrome.storage.local.set({
-            accessToken: this.accessToken,
-            tokenExpiry: this.tokenExpiry
-          });
+          // Extract and store tenant information from the token
+          try {
+            const tokenPayload = JSON.parse(atob(this.accessToken.split('.')[1]));
+            this.userTenant = {
+              tenantId: tokenPayload.tid,
+              tenantName: tokenPayload.iss,
+              userPrincipalName: tokenPayload.upn || tokenPayload.preferred_username,
+              userName: tokenPayload.name
+            };
+            
+            await chrome.storage.local.set({
+              accessToken: this.accessToken,
+              tokenExpiry: this.tokenExpiry,
+              userTenant: this.userTenant // Store tenant info
+            });
+            
+            console.log('Token and tenant info stored successfully:', this.userTenant);
+          } catch (parseError) {
+            console.warn('Could not parse tenant info from token:', parseError);
+            // Still store the token even if we can't parse tenant info
+            await chrome.storage.local.set({
+              accessToken: this.accessToken,
+              tokenExpiry: this.tokenExpiry
+            });
+          }
 
-          console.log('Token stored successfully via implicit flow');
+          console.log('Multi-tenant token stored successfully via implicit flow');
           resolve();
 
         } catch (err) {
@@ -484,10 +507,14 @@ class TokenManager {
 
   async loadStoredTokens() {
     console.log('Loading stored tokens...');
-    const stored = await chrome.storage.local.get(['accessToken', 'tokenExpiry']);
+    const stored = await chrome.storage.local.get(['accessToken', 'tokenExpiry', 'userTenant']);
     this.accessToken = stored.accessToken;
     this.tokenExpiry = stored.tokenExpiry;
-    console.log('Stored tokens loaded:', { hasAccessToken: !!this.accessToken });
+    this.userTenant = stored.userTenant;
+    console.log('Stored tokens loaded:', { 
+      hasAccessToken: !!this.accessToken, 
+      tenant: this.userTenant?.tenantId || 'unknown'
+    });
   }
 
   async clearTokens() {
@@ -495,6 +522,7 @@ class TokenManager {
     this.accessToken = null;
     this.refreshToken = null;
     this.tokenExpiry = null;
+    this.userTenant = null;
     await chrome.storage.local.clear();
   }
 }
@@ -1023,6 +1051,11 @@ class AzurePIMManager {
           sendResponse({ success: true, authenticated: isAuthenticated });
           break;
 
+        case 'getTenantInfo':
+          const tenantInfo = this.tokenManager.userTenant || null;
+          sendResponse({ success: true, tenantInfo: tenantInfo });
+          break;
+
         case 'listEligibleRoles':
           const eligibleRoles = await this.graphClient.listEligibleRoles();
           sendResponse({ success: true, data: eligibleRoles });
@@ -1133,4 +1166,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 console.log('Initializing PIM Manager...');
 const pimManager = new AzurePIMManager();
 
-console.log('Background script loaded successfully with notification support');
+console.log('Background script loaded successfully with multi-tenant notification support');
