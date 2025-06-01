@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "__MSG_extName__",
   "description": "__MSG_extDescription__",
-  "version": "2.0",
-  "author": "Cybersecurity Team",
+  "version": "2.1",
+  "author": "Layth CHEBBI",
   "default_locale": "en",
   
   "permissions": [
@@ -34,7 +34,8 @@
   },
   
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   
   "content_security_policy": {
@@ -47,13 +48,13 @@
       "openid",
       "profile",
       "User.Read",
-      "RoleManagement.ReadWrite.Directory",
-      "PrivilegedAccess.ReadWrite.AzureResources",
-      "RoleAssignmentSchedule.ReadWrite.Directory",
-      "RoleEligibilitySchedule.Read.Directory",
-      "Directory.Read.All",
-      "Policy.Read.All",
-      "RoleManagementPolicy.Read.Directory"
+      "https://graph.microsoft.com/RoleManagement.ReadWrite.Directory",
+      "https://graph.microsoft.com/PrivilegedAccess.ReadWrite.AzureResources",
+      "https://graph.microsoft.com/RoleAssignmentSchedule.ReadWrite.Directory",
+      "https://graph.microsoft.com/RoleEligibilitySchedule.Read.Directory",
+      "https://graph.microsoft.com/Directory.Read.All",
+      "https://graph.microsoft.com/Policy.Read.All",
+      "https://graph.microsoft.com/RoleManagementPolicy.Read.Directory"
     ]
   },
   

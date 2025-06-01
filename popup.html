@@ -55,6 +55,46 @@
       <div id="last-refresh" class="last-refresh"></div>
     </header>
 
+    <!-- Notification Settings Panel -->
+    <div class="notification-panel">
+      <div class="notification-header">
+        <span class="notification-icon">🔔</span>
+        <h3 data-i18n="notificationSettings">Notification Settings</h3>
+        <div class="notification-status">
+          <span id="notification-status-text" class="status-text" data-i18n="notificationInactive">Inactive</span>
+          <div class="status-indicator">
+            <div id="status-dot" class="status-dot inactive"></div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="notification-controls">
+        <div class="notification-toggle-container">
+          <label class="toggle-switch" for="notification-toggle">
+            <input type="checkbox" id="notification-toggle">
+            <span class="toggle-slider"></span>
+          </label>
+          <div class="toggle-labels">
+            <span data-i18n="enableNotifications">Enable 15-minute expiration warnings</span>
+            <div class="toggle-description">
+              <span data-i18n="notificationDescription">Get browser notifications when your roles are about to expire</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="notification-info">
+          <div class="info-item">
+            <span class="info-label" data-i18n="activeNotifications">Active notifications:</span>
+            <span id="active-notification-count" class="info-value">0</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label" data-i18n="warningTime">Warning time:</span>
+            <span class="info-value" data-i18n="fifteenMinutes">15 minutes</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Navigation Tabs -->
     <nav class="tabs">
       <button class="tab-trigger active" data-tab="eligible">
@@ -67,26 +107,126 @@
         <span data-i18n="tabExpiring">Expiring</span> (<span id="expiring-count">0</span>)
         <span class="warning-icon" style="display: none;">⚠️</span>
       </button>
+      <button class="tab-trigger" data-tab="settings">
+        <span data-i18n="tabSettings">Settings</span>
+      </button>
     </nav>
 
     <!-- Tab Content -->
     <main class="tab-container">
       <div id="eligible-content" class="tab-content">
+        <div class="section-header">
+          <h3 data-i18n="eligibleRolesTitle">Roles Available for Activation</h3>
+          <div class="bulk-actions">
+            <button id="activate-all-btn" class="btn btn-secondary" style="display: none;" data-i18n="activateAll">
+              Activate All (1h)
+            </button>
+          </div>
+        </div>
         <div id="eligible-roles" class="roles-container"></div>
       </div>
       
       <div id="active-content" class="tab-content" style="display: none;">
+        <div class="section-header">
+          <h3 data-i18n="activeRolesTitle">Currently Active Roles</h3>
+          <div class="bulk-actions">
+            <button id="extend-all-btn" class="btn btn-secondary" style="display: none;" data-i18n="extendAll">
+              Extend All (2h)
+            </button>
+          </div>
+        </div>
         <div id="active-roles" class="roles-container"></div>
       </div>
       
       <div id="expiring-content" class="tab-content" style="display: none;">
+        <div class="section-header">
+          <h3 data-i18n="expiringRolesTitle">Roles Expiring Soon</h3>
+          <div class="expiring-info">
+            <span class="info-text" data-i18n="expiringInfo">Roles expiring within 30 minutes</span>
+          </div>
+        </div>
         <div id="expiring-roles" class="roles-container"></div>
+      </div>
+
+      <div id="settings-content" class="tab-content" style="display: none;">
+        <div class="settings-container">
+          <div class="settings-section">
+            <h3 data-i18n="authenticationSettings">Authentication</h3>
+            <div class="settings-item">
+              <div class="auth-status">
+                <span id="auth-status-text" class="status-text" data-i18n="checkingAuth">Checking...</span>
+                <div id="auth-status-dot" class="status-dot checking"></div>
+              </div>
+              <div class="auth-actions">
+                <button id="force-reauth-btn" class="btn btn-primary" data-i18n="forceReauth">
+                  Re-authenticate
+                </button>
+                <button id="clear-auth-btn" class="btn btn-secondary" data-i18n="clearAuth">
+                  Sign Out
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3 data-i18n="notificationSettingsTitle">Notification Preferences</h3>
+            <div class="settings-item">
+              <label class="setting-label">
+                <input type="number" id="warning-time-input" min="1" max="60" value="15" class="setting-input">
+                <span data-i18n="warningTimeLabel">Warning time (minutes)</span>
+              </label>
+            </div>
+            <div class="settings-item">
+              <label class="setting-label">
+                <input type="checkbox" id="sound-notifications" class="setting-checkbox">
+                <span data-i18n="soundNotifications">Play notification sound</span>
+              </label>
+            </div>
+            <div class="settings-item">
+              <label class="setting-label">
+                <input type="checkbox" id="persistent-notifications" class="setting-checkbox" checked>
+                <span data-i18n="persistentNotifications">Keep notifications until dismissed</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3 data-i18n="aboutSection">About</h3>
+            <div class="about-info">
+              <div class="about-item">
+                <span class="about-label" data-i18n="version">Version:</span>
+                <span class="about-value">2.1</span>
+              </div>
+              <div class="about-item">
+                <span class="about-label" data-i18n="author">Author:</span>
+                <span class="about-value">Layth CHEBBI</span>
+              </div>
+              <div class="about-item">
+                <span class="about-label" data-i18n="features">Features:</span>
+                <span class="about-value" data-i18n="featuresText">Role activation, extension, and expiration notifications</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
 
     <!-- Status Message -->
     <div id="status-message" class="status-message" style="display: none;"></div>
+
+    <!-- Quick Action Buttons -->
+    <div class="quick-actions" style="display: none;">
+      <button id="quick-extend-all" class="btn btn-warning" data-i18n="quickExtendAll">
+        ⚡ Quick Extend All (30min)
+      </button>
+      <button id="emergency-extend" class="btn btn-danger" data-i18n="emergencyExtend">
+        🚨 Emergency Extend (4h)
+      </button>
+    </div>
   </div>
+
+  <!-- Toast Notifications -->
+  <div id="toast-container" class="toast-container"></div>
 
   <script src="popup.js"></script>
 </body>

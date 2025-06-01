@@ -1,5 +1,5 @@
-// Azure PIM Helper - Chrome Extension Popup
-// Final optimized version with justification support and i18n with language switcher
+// Azure PIM Helper - Enhanced Chrome Extension Popup
+// Version 2.1 with notification support and improved UI
 
 class AzurePIMHelper {
   constructor() {
@@ -12,7 +12,9 @@ class AzurePIMHelper {
     this.extendingRoles = new Set();
     this.currentTab = 'eligible';
     this.theme = 'light';
-    this.currentLanguage = 'en'; // Default language
+    this.currentLanguage = 'en';
+    this.notificationMonitoring = false;
+    this.activeNotificationCount = 0;
     
     this.init();
   }
@@ -28,6 +30,9 @@ class AzurePIMHelper {
     
     // Wait a moment for background script to initialize
     await this.ensureBackgroundScript();
+    
+    // Check notification status and load roles
+    await this.checkNotificationStatus();
     await this.loadRoles();
   }
 
@@ -75,7 +80,7 @@ class AzurePIMHelper {
     this.updateLastRefresh();
     
     // Show a brief notification
-    this.showStatus('success', this.getMessage('languageChanged'));
+    this.showToast('success', this.getMessage('languageChanged'));
   }
 
   // Update language button icon
@@ -122,6 +127,81 @@ class AzurePIMHelper {
     this.updateLanguageIcon();
   }
 
+  // Check notification monitoring status
+  async checkNotificationStatus() {
+    try {
+      const response = await this.sendMessage({ action: 'getNotificationStatus' });
+      if (response && response.success) {
+        this.notificationMonitoring = response.monitoring;
+        this.activeNotificationCount = response.activeNotifications || 0;
+        this.updateNotificationUI();
+      }
+    } catch (error) {
+      console.warn('Failed to check notification status:', error);
+    }
+  }
+
+  // Update notification UI elements
+  updateNotificationUI() {
+    const toggle = document.getElementById('notification-toggle');
+    const statusText = document.getElementById('notification-status-text');
+    const statusDot = document.getElementById('status-dot');
+    const activeCount = document.getElementById('active-notification-count');
+
+    if (toggle) {
+      toggle.checked = this.notificationMonitoring;
+    }
+
+    if (statusText) {
+      statusText.textContent = this.notificationMonitoring ? 
+        this.getMessage('notificationActive') : 
+        this.getMessage('notificationInactive');
+    }
+
+    if (statusDot) {
+      statusDot.className = `status-dot ${this.notificationMonitoring ? 'active' : 'inactive'}`;
+    }
+
+    if (activeCount) {
+      activeCount.textContent = this.activeNotificationCount.toString();
+    }
+  }
+
+  // Start notification monitoring
+  async startNotifications() {
+    try {
+      const response = await this.sendMessage({ action: 'startNotifications' });
+      if (response && response.success) {
+        this.notificationMonitoring = true;
+        this.updateNotificationUI();
+        this.showToast('success', this.getMessage('notificationsStarted'));
+      } else {
+        throw new Error(response?.error || 'Failed to start notifications');
+      }
+    } catch (error) {
+      console.error('Error starting notifications:', error);
+      this.showToast('error', this.getMessage('notificationStartFailed'));
+    }
+  }
+
+  // Stop notification monitoring
+  async stopNotifications() {
+    try {
+      const response = await this.sendMessage({ action: 'stopNotifications' });
+      if (response && response.success) {
+        this.notificationMonitoring = false;
+        this.activeNotificationCount = 0;
+        this.updateNotificationUI();
+        this.showToast('success', this.getMessage('notificationsStopped'));
+      } else {
+        throw new Error(response?.error || 'Failed to stop notifications');
+      }
+    } catch (error) {
+      console.error('Error stopping notifications:', error);
+      this.showToast('error', this.getMessage('notificationStopFailed'));
+    }
+  }
+
   // Get localized message with placeholders - now uses custom language loading
   getMessage(messageKey, substitutions = []) {
     // Use our custom language loading instead of chrome.i18n
@@ -159,7 +239,7 @@ class AzurePIMHelper {
     return messages[messageKey]?.message || null;
   }
 
-  // Embedded message definitions (to avoid chrome.i18n dependency issues)
+  // Embedded message definitions (enhanced with notification support)
   getLanguageMessages(language) {
     const messages = {
       en: {
@@ -182,6 +262,48 @@ class AzurePIMHelper {
         tabEligible: { message: "Eligible" },
         tabActive: { message: "Active" },
         tabExpiring: { message: "Expiring" },
+        tabSettings: { message: "Settings" },
+        
+        // Notification Messages
+        notificationSettings: { message: "Notification Settings" },
+        enableNotifications: { message: "Enable 15-minute expiration warnings" },
+        notificationDescription: { message: "Get browser notifications when your roles are about to expire" },
+        activeNotifications: { message: "Active notifications" },
+        warningTime: { message: "Warning time" },
+        fifteenMinutes: { message: "15 minutes" },
+        notificationActive: { message: "Active" },
+        notificationInactive: { message: "Inactive" },
+        notificationsStarted: { message: "Notification monitoring started" },
+        notificationsStopped: { message: "Notification monitoring stopped" },
+        notificationStartFailed: { message: "Failed to start notifications" },
+        notificationStopFailed: { message: "Failed to stop notifications" },
+        
+        // Section Headers
+        eligibleRolesTitle: { message: "Roles Available for Activation" },
+        activeRolesTitle: { message: "Currently Active Roles" },
+        expiringRolesTitle: { message: "Roles Expiring Soon" },
+        expiringInfo: { message: "Roles expiring within 30 minutes" },
+        authenticationSettings: { message: "Authentication" },
+        notificationSettingsTitle: { message: "Notification Preferences" },
+        aboutSection: { message: "About" },
+        
+        // Settings
+        checkingAuth: { message: "Checking..." },
+        forceReauth: { message: "Re-authenticate" },
+        clearAuth: { message: "Sign Out" },
+        warningTimeLabel: { message: "Warning time (minutes)" },
+        soundNotifications: { message: "Play notification sound" },
+        persistentNotifications: { message: "Keep notifications until dismissed" },
+        version: { message: "Version" },
+        author: { message: "Author" },
+        features: { message: "Features" },
+        featuresText: { message: "Role activation, extension, and expiration notifications" },
+        
+        // Bulk Actions
+        activateAll: { message: "Activate All (1h)" },
+        extendAll: { message: "Extend All (2h)" },
+        quickExtendAll: { message: "Quick Extend All (30min)" },
+        emergencyExtend: { message: "Emergency Extend (4h)" },
         
         // Empty States
         noEligibleRoles: { message: "No eligible roles available" },
@@ -235,7 +357,19 @@ class AzurePIMHelper {
         // Time Formats
         hoursFormat: { message: "$1$ hour$2$" },
         timeFormatHoursMinutes: { message: "$1$h $2$m" },
-        timeFormatMinutes: { message: "$1$m" }
+        timeFormatMinutes: { message: "$1$m" },
+        
+        // Additional Messages for Enhanced Features
+        authenticationSuccessful: { message: "Authentication successful" },
+        authenticationFailed: { message: "Authentication failed" },
+        signedOut: { message: "Successfully signed out" },
+        signOutFailed: { message: "Failed to sign out" },
+        confirmBulkActivate: { message: "Activate $1$ roles for 1 hour?" },
+        confirmBulkExtend: { message: "Extend $1$ roles for 2 hours?" },
+        confirmEmergencyExtend: { message: "Emergency extend all active roles for 4 hours?" },
+        emergencyExtensionComplete: { message: "Emergency extension completed for all roles" },
+        bulkActivationComplete: { message: "Bulk activation completed" },
+        bulkExtensionComplete: { message: "Bulk extension completed" }
       },
       fr: {
         // En-tête et Navigation
@@ -257,6 +391,48 @@ class AzurePIMHelper {
         tabEligible: { message: "Éligibles" },
         tabActive: { message: "Actifs" },
         tabExpiring: { message: "Expirant" },
+        tabSettings: { message: "Paramètres" },
+        
+        // Messages de Notification
+        notificationSettings: { message: "Paramètres de notification" },
+        enableNotifications: { message: "Activer les alertes d'expiration de 15 minutes" },
+        notificationDescription: { message: "Recevoir des notifications de navigateur quand vos rôles vont expirer" },
+        activeNotifications: { message: "Notifications actives" },
+        warningTime: { message: "Temps d'alerte" },
+        fifteenMinutes: { message: "15 minutes" },
+        notificationActive: { message: "Actif" },
+        notificationInactive: { message: "Inactif" },
+        notificationsStarted: { message: "Surveillance des notifications démarrée" },
+        notificationsStopped: { message: "Surveillance des notifications arrêtée" },
+        notificationStartFailed: { message: "Échec du démarrage des notifications" },
+        notificationStopFailed: { message: "Échec de l'arrêt des notifications" },
+        
+        // En-têtes de Section
+        eligibleRolesTitle: { message: "Rôles disponibles pour activation" },
+        activeRolesTitle: { message: "Rôles actuellement actifs" },
+        expiringRolesTitle: { message: "Rôles expirant bientôt" },
+        expiringInfo: { message: "Rôles expirant dans 30 minutes" },
+        authenticationSettings: { message: "Authentification" },
+        notificationSettingsTitle: { message: "Préférences de notification" },
+        aboutSection: { message: "À propos" },
+        
+        // Paramètres
+        checkingAuth: { message: "Vérification..." },
+        forceReauth: { message: "Ré-authentifier" },
+        clearAuth: { message: "Déconnexion" },
+        warningTimeLabel: { message: "Temps d'alerte (minutes)" },
+        soundNotifications: { message: "Jouer un son de notification" },
+        persistentNotifications: { message: "Garder les notifications jusqu'à fermeture" },
+        version: { message: "Version" },
+        author: { message: "Auteur" },
+        features: { message: "Fonctionnalités" },
+        featuresText: { message: "Activation, extension et notifications d'expiration de rôles" },
+        
+        // Actions en Lot
+        activateAll: { message: "Activer Tout (1h)" },
+        extendAll: { message: "Prolonger Tout (2h)" },
+        quickExtendAll: { message: "Extension Rapide (30min)" },
+        emergencyExtend: { message: "Extension d'Urgence (4h)" },
         
         // États Vides
         noEligibleRoles: { message: "Aucun rôle éligible disponible" },
@@ -310,7 +486,19 @@ class AzurePIMHelper {
         // Formats de Temps
         hoursFormat: { message: "$1$ heure$2$" },
         timeFormatHoursMinutes: { message: "$1$h $2$m" },
-        timeFormatMinutes: { message: "$1$m" }
+        timeFormatMinutes: { message: "$1$m" },
+        
+        // Messages Additionnels pour Fonctionnalités Améliorées
+        authenticationSuccessful: { message: "Authentification réussie" },
+        authenticationFailed: { message: "Échec de l'authentification" },
+        signedOut: { message: "Déconnexion réussie" },
+        signOutFailed: { message: "Échec de la déconnexion" },
+        confirmBulkActivate: { message: "Activer $1$ rôles pour 1 heure ?" },
+        confirmBulkExtend: { message: "Prolonger $1$ rôles pour 2 heures ?" },
+        confirmEmergencyExtend: { message: "Extension d'urgence de tous les rôles actifs pour 4 heures ?" },
+        emergencyExtensionComplete: { message: "Extension d'urgence terminée pour tous les rôles" },
+        bulkActivationComplete: { message: "Activation en lot terminée" },
+        bulkExtensionComplete: { message: "Prolongation en lot terminée" }
       }
     };
 
@@ -340,7 +528,7 @@ class AzurePIMHelper {
       }
     } catch (error) {
       console.error('Failed to establish connection with background script');
-      this.showStatus('error', this.getMessage('serviceNotResponding'));
+      this.showToast('error', this.getMessage('serviceNotResponding'));
       return false;
     }
   }
@@ -361,12 +549,70 @@ class AzurePIMHelper {
       this.handleRefresh();
     });
 
+    // Notification toggle
+    const notificationToggle = document.getElementById('notification-toggle');
+    if (notificationToggle) {
+      notificationToggle.addEventListener('change', (e) => {
+        if (e.target.checked) {
+          this.startNotifications();
+        } else {
+          this.stopNotifications();
+        }
+      });
+    }
+
     // Tab switching
     document.querySelectorAll('.tab-trigger').forEach(tab => {
       tab.addEventListener('click', (e) => {
         this.switchTab(e.target.dataset.tab);
       });
     });
+
+    // Settings controls
+    const forceReauthBtn = document.getElementById('force-reauth-btn');
+    const clearAuthBtn = document.getElementById('clear-auth-btn');
+    
+    if (forceReauthBtn) {
+      forceReauthBtn.addEventListener('click', () => {
+        this.handleForceReauth();
+      });
+    }
+    
+    if (clearAuthBtn) {
+      clearAuthBtn.addEventListener('click', () => {
+        this.handleClearAuth();
+      });
+    }
+
+    // Bulk actions
+    const activateAllBtn = document.getElementById('activate-all-btn');
+    const extendAllBtn = document.getElementById('extend-all-btn');
+    const quickExtendBtn = document.getElementById('quick-extend-all');
+    const emergencyExtendBtn = document.getElementById('emergency-extend');
+
+    if (activateAllBtn) {
+      activateAllBtn.addEventListener('click', () => {
+        this.handleBulkActivate();
+      });
+    }
+
+    if (extendAllBtn) {
+      extendAllBtn.addEventListener('click', () => {
+        this.handleBulkExtend();
+      });
+    }
+
+    if (quickExtendBtn) {
+      quickExtendBtn.addEventListener('click', () => {
+        this.handleQuickExtend();
+      });
+    }
+
+    if (emergencyExtendBtn) {
+      emergencyExtendBtn.addEventListener('click', () => {
+        this.handleEmergencyExtend();
+      });
+    }
 
     // Role action buttons (delegated event handling)
     document.addEventListener('click', (e) => {
@@ -425,6 +671,163 @@ class AzurePIMHelper {
         await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
       }
     }
+  }
+
+  // Authentication handlers
+  async handleForceReauth() {
+    try {
+      this.setAuthButtonLoading(true);
+      const response = await this.sendMessage({ action: 'forceReauth' });
+      
+      if (response && response.success) {
+        this.showToast('success', this.getMessage('authenticationSuccessful'));
+        await this.loadRoles();
+        await this.checkNotificationStatus();
+      } else {
+        throw new Error(response?.error || 'Authentication failed');
+      }
+    } catch (error) {
+      this.showToast('error', this.getMessage('authenticationFailed'));
+    } finally {
+      this.setAuthButtonLoading(false);
+    }
+  }
+
+  async handleClearAuth() {
+    try {
+      this.setAuthButtonLoading(true);
+      const response = await this.sendMessage({ action: 'clearAuth' });
+      
+      if (response && response.success) {
+        this.showToast('success', this.getMessage('signedOut'));
+        this.notificationMonitoring = false;
+        this.updateNotificationUI();
+        this.clearRoleData();
+      } else {
+        throw new Error(response?.error || 'Sign out failed');
+      }
+    } catch (error) {
+      this.showToast('error', this.getMessage('signOutFailed'));
+    } finally {
+      this.setAuthButtonLoading(false);
+    }
+  }
+
+  setAuthButtonLoading(loading) {
+    const forceReauthBtn = document.getElementById('force-reauth-btn');
+    const clearAuthBtn = document.getElementById('clear-auth-btn');
+    const authStatusDot = document.getElementById('auth-status-dot');
+    const authStatusText = document.getElementById('auth-status-text');
+
+    if (forceReauthBtn) {
+      forceReauthBtn.disabled = loading;
+      forceReauthBtn.textContent = loading ? '⏳' : this.getMessage('forceReauth');
+    }
+
+    if (clearAuthBtn) {
+      clearAuthBtn.disabled = loading;
+    }
+
+    if (authStatusDot && authStatusText) {
+      if (loading) {
+        authStatusDot.className = 'status-dot checking';
+        authStatusText.textContent = this.getMessage('checkingAuth');
+      }
+    }
+  }
+
+  // Bulk action handlers
+  async handleBulkActivate() {
+    if (this.eligibleRoles.length === 0) return;
+    
+    const confirmed = confirm(this.getMessage('confirmBulkActivate', [this.eligibleRoles.length.toString()]));
+    if (!confirmed) return;
+
+    for (const role of this.eligibleRoles.slice(0, 5)) { // Limit to 5 roles
+      try {
+        await this.handleActivateRole(role.id, role.name);
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Delay between activations
+      } catch (error) {
+        console.error('Bulk activation error:', error);
+      }
+    }
+  }
+
+  async handleBulkExtend() {
+    const extendableRoles = [...this.activeRoles, ...this.expiringRoles];
+    if (extendableRoles.length === 0) return;
+    
+    const confirmed = confirm(this.getMessage('confirmBulkExtend', [extendableRoles.length.toString()]));
+    if (!confirmed) return;
+
+    for (const role of extendableRoles) {
+      try {
+        await this.handleExtendRole(role.id, role.name);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (error) {
+        console.error('Bulk extension error:', error);
+      }
+    }
+  }
+
+  async handleQuickExtend() {
+    // Quick 30-minute extension for expiring roles
+    const expiringRoles = this.expiringRoles;
+    if (expiringRoles.length === 0) return;
+
+    for (const role of expiringRoles) {
+      try {
+        await this.handleExtendRole(role.id, role.name);
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (error) {
+        console.error('Quick extend error:', error);
+      }
+    }
+  }
+
+  async handleEmergencyExtend() {
+    // Emergency 4-hour extension for all active roles
+    const allActiveRoles = [...this.activeRoles, ...this.expiringRoles];
+    if (allActiveRoles.length === 0) return;
+
+    const confirmed = confirm(this.getMessage('confirmEmergencyExtend'));
+    if (!confirmed) return;
+
+    for (const role of allActiveRoles) {
+      try {
+        await this.sendMessage({
+          action: 'extendRole',
+          assignment: {
+            id: role.id,
+            roleDefinitionId: role.roleDefinitionId,
+            principalId: role.principalId,
+            directoryScopeId: role.directoryScopeId,
+            scheduleInfo: {
+              expiration: {
+                endDateTime: role.expiresAt?.toISOString()
+              }
+            }
+          },
+          additionalDuration: 'PT4H',
+          justification: 'Emergency extension via PIM Helper'
+        });
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (error) {
+        console.error('Emergency extend error:', error);
+      }
+    }
+    
+    this.showToast('success', this.getMessage('emergencyExtensionComplete'));
+    setTimeout(() => this.loadRoles(), 2000);
+  }
+
+  // Clear role data when signed out
+  clearRoleData() {
+    this.eligibleRoles = [];
+    this.activeRoles = [];
+    this.expiringRoles = [];
+    this.renderRoles();
+    this.updateTabCounts();
   }
 
   // Theme management
@@ -570,12 +973,12 @@ class AzurePIMHelper {
       const convertEndTime = performance.now();
       console.log(`Role conversion took ${(convertEndTime - convertStartTime).toFixed(2)}ms`);
       
-      // Separate expiring roles (less than 1 hour remaining)
+      // Separate expiring roles (less than 30 minutes remaining)
       const now = new Date();
       const expiring = active.filter(role => {
         if (!role.expiresAt) return false;
         const diff = role.expiresAt - now;
-        return diff <= 60 * 60 * 1000; // Less than 1 hour
+        return diff <= 30 * 60 * 1000; // Less than 30 minutes
       });
 
       // Update state
@@ -591,10 +994,11 @@ class AzurePIMHelper {
       this.updateLastRefresh();
       this.renderRoles();
       this.updateTabCounts();
+      this.updateBulkActionButtons();
 
       // Show performance info in success message
       const loadTime = Math.round(overallEndTime - overallStartTime);
-      this.showStatus('success', this.getMessage('rolesLoaded', [
+      this.showToast('success', this.getMessage('rolesLoaded', [
         (eligible.length + active.length).toString(),
         loadTime.toString()
       ]));
@@ -604,11 +1008,11 @@ class AzurePIMHelper {
       
       // Show specific error messages for common issues
       if (error.message.includes('service worker') || error.message.includes('extension service')) {
-        this.showStatus('error', this.getMessage('serviceNotResponding'));
+        this.showToast('error', this.getMessage('serviceNotResponding'));
       } else if (error.message.includes('authentication') || error.message.includes('token')) {
-        this.showStatus('error', this.getMessage('authenticationRequired'));
+        this.showToast('error', this.getMessage('authenticationRequired'));
       } else {
-        this.showStatus('error', this.getMessage('loadRolesFailed', [error.message]));
+        this.showToast('error', this.getMessage('loadRolesFailed', [error.message]));
       }
     } finally {
       this.setLoading(false);
@@ -622,9 +1026,10 @@ class AzurePIMHelper {
     
     try {
       await this.loadRoles();
+      await this.checkNotificationStatus();
     } catch (error) {
       console.error('Refresh error:', error);
-      this.showStatus('error', this.getMessage('refreshFailed', [error.message]));
+      this.showToast('error', this.getMessage('refreshFailed', [error.message]));
     } finally {
       this.updateRefreshButton();
     }
@@ -634,7 +1039,7 @@ class AzurePIMHelper {
   async handleActivateRole(roleId, roleName) {
     const role = this.eligibleRoles.find(r => r.id === roleId);
     if (!role) {
-      this.showStatus('error', this.getMessage('roleNotFound'));
+      this.showToast('error', this.getMessage('roleNotFound'));
       return;
     }
 
@@ -672,12 +1077,12 @@ class AzurePIMHelper {
         throw new Error(response?.error || 'Activation failed');
       }
 
-      this.showStatus('success', this.getMessage('activationSuccess', [roleName]));
+      this.showToast('success', this.getMessage('activationSuccess', [roleName]));
       setTimeout(() => this.loadRoles(), 3000);
 
     } catch (error) {
       console.error('Activation error:', error);
-      this.showStatus('error', this.getMessage('activationFailed', [roleName, error.message]));
+      this.showToast('error', this.getMessage('activationFailed', [roleName, error.message]));
     } finally {
       this.activatingRoles.delete(roleId);
       this.updateRoleButton(roleId, 'normal');
@@ -699,19 +1104,26 @@ class AzurePIMHelper {
           id: role.id,
           roleDefinitionId: role.roleDefinitionId,
           principalId: role.principalId,
-          directoryScopeId: role.directoryScopeId
-        }
+          directoryScopeId: role.directoryScopeId,
+          scheduleInfo: {
+            expiration: {
+              endDateTime: role.expiresAt?.toISOString()
+            }
+          }
+        },
+        additionalDuration: 'PT2H',
+        justification: 'Role extension requested via PIM Helper'
       });
 
       if (!response || !response.success) {
         throw new Error(response?.error || 'Extension failed');
       }
 
-      this.showStatus('success', this.getMessage('extensionSuccess', [roleName]));
+      this.showToast('success', this.getMessage('extensionSuccess', [roleName]));
       setTimeout(() => this.loadRoles(), 1000);
 
     } catch (error) {
-      this.showStatus('error', this.getMessage('extensionFailed', [roleName, error.message]));
+      this.showToast('error', this.getMessage('extensionFailed', [roleName, error.message]));
     } finally {
       this.extendingRoles.delete(roleId);
       this.updateRoleButton(roleId, 'normal');
@@ -781,6 +1193,67 @@ class AzurePIMHelper {
     } else {
       warningIcon.style.display = 'none';
     }
+  }
+
+  updateBulkActionButtons() {
+    const activateAllBtn = document.getElementById('activate-all-btn');
+    const extendAllBtn = document.getElementById('extend-all-btn');
+    const quickActions = document.querySelector('.quick-actions');
+
+    if (activateAllBtn) {
+      activateAllBtn.style.display = this.eligibleRoles.length > 1 ? 'inline-flex' : 'none';
+    }
+
+    if (extendAllBtn) {
+      const extendableCount = this.activeRoles.length + this.expiringRoles.length;
+      extendAllBtn.style.display = extendableCount > 1 ? 'inline-flex' : 'none';
+    }
+
+    if (quickActions) {
+      const hasExpiringRoles = this.expiringRoles.length > 0;
+      const hasActiveRoles = this.activeRoles.length > 0;
+      quickActions.style.display = (hasExpiringRoles || hasActiveRoles) ? 'flex' : 'none';
+    }
+  }
+
+  // Toast notification system
+  showToast(type, message, duration = 5000) {
+    const toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+      // Fallback to status message if toast container doesn't exist
+      this.showStatus(type, message);
+      return;
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    
+    const icon = {
+      success: '✅',
+      error: '❌',
+      warning: '⚠️',
+      info: 'ℹ️'
+    }[type] || 'ℹ️';
+
+    toast.innerHTML = `
+      <span>${icon}</span>
+      <span>${message}</span>
+    `;
+
+    toastContainer.appendChild(toast);
+
+    // Auto-remove after duration
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+          if (toast.parentNode) {
+            toastContainer.removeChild(toast);
+          }
+        }, 300);
+      }
+    }, duration);
   }
 
   // Optimized rendering methods
@@ -878,7 +1351,7 @@ class AzurePIMHelper {
     console.log(`Rendering role "${role.name}": requiresJustification = ${role.requiresJustification}`);
     
     return `
-      <div class="role-item">
+      <div class="role-item ${type === 'expiring' ? 'expiring-soon' : ''}">
         <div class="role-info">
           <div class="role-header">
             <h4 class="role-name">${role.name}</h4>
@@ -904,7 +1377,7 @@ class AzurePIMHelper {
           ` : ''}
           
           ${(type === 'active' || type === 'expiring') && role.expiresAt ? `
-            <p class="role-expires ${this.isExpiringSoon(role.expiresAt) ? 'expires-soon' : ''}">
+            <p class="expiration-time ${this.isExpiringSoon(role.expiresAt) ? 'warning' : ''}">
               🕐 ${this.getMessage('expiresIn', [this.formatTimeRemaining(role.expiresAt)])}
             </p>
           ` : ''}
@@ -922,7 +1395,7 @@ class AzurePIMHelper {
           ` : ''}
           
           ${(type === 'active' || type === 'expiring') ? `
-            <button class="btn btn-outline extend-btn" 
+            <button class="btn btn-secondary extend-btn" 
                     data-role-id="${role.id}" 
                     data-role-name="${role.name}"
                     ${isExtending ? 'disabled' : ''}>
@@ -983,7 +1456,7 @@ class AzurePIMHelper {
   isExpiringSoon(expiresAt) {
     const now = new Date();
     const diff = expiresAt - now;
-    return diff <= 60 * 60 * 1000; // Less than 1 hour
+    return diff <= 30 * 60 * 1000; // Less than 30 minutes
   }
 
   showStatus(type, message) {

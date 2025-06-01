@@ -4,7 +4,7 @@
     "description": "Nom de l'extension"
   },
   "extDescription": {
-    "message": "Simplifiez Azure Privileged Identity Management avec activation et surveillance faciles des rôles",
+    "message": "Simplifiez Azure Privileged Identity Management avec activation, surveillance et notifications d'expiration des rôles",
     "description": "Description de l'extension"
   },
   "defaultTitle": {
@@ -62,6 +62,142 @@
   "tabExpiring": {
     "message": "Expirant",
     "description": "Onglet des rôles expirant"
+  },
+  "tabSettings": {
+    "message": "Paramètres",
+    "description": "Onglet des paramètres"
+  },
+  "notificationSettings": {
+    "message": "Paramètres de notification",
+    "description": "Titre du panneau des paramètres de notification"
+  },
+  "enableNotifications": {
+    "message": "Activer les alertes d'expiration de 15 minutes",
+    "description": "Libellé du commutateur de notification"
+  },
+  "notificationDescription": {
+    "message": "Recevoir des notifications de navigateur quand vos rôles vont expirer",
+    "description": "Description de la fonctionnalité de notification"
+  },
+  "activeNotifications": {
+    "message": "Notifications actives",
+    "description": "Libellé du compteur de notifications actives"
+  },
+  "warningTime": {
+    "message": "Temps d'alerte",
+    "description": "Libellé du temps d'alerte"
+  },
+  "fifteenMinutes": {
+    "message": "15 minutes",
+    "description": "Période de quinze minutes"
+  },
+  "notificationActive": {
+    "message": "Actif",
+    "description": "État de notification actif"
+  },
+  "notificationInactive": {
+    "message": "Inactif",
+    "description": "État de notification inactif"
+  },
+  "notificationsStarted": {
+    "message": "Surveillance des notifications démarrée",
+    "description": "Confirmation du démarrage des notifications"
+  },
+  "notificationsStopped": {
+    "message": "Surveillance des notifications arrêtée",
+    "description": "Confirmation de l'arrêt des notifications"
+  },
+  "notificationStartFailed": {
+    "message": "Échec du démarrage des notifications",
+    "description": "Message d'échec du démarrage des notifications"
+  },
+  "notificationStopFailed": {
+    "message": "Échec de l'arrêt des notifications",
+    "description": "Message d'échec de l'arrêt des notifications"
+  },
+  "eligibleRolesTitle": {
+    "message": "Rôles disponibles pour activation",
+    "description": "Titre de la section des rôles éligibles"
+  },
+  "activeRolesTitle": {
+    "message": "Rôles actuellement actifs",
+    "description": "Titre de la section des rôles actifs"
+  },
+  "expiringRolesTitle": {
+    "message": "Rôles expirant bientôt",
+    "description": "Titre de la section des rôles expirant"
+  },
+  "expiringInfo": {
+    "message": "Rôles expirant dans 30 minutes",
+    "description": "Texte d'information sur les rôles expirant"
+  },
+  "authenticationSettings": {
+    "message": "Authentification",
+    "description": "Titre de la section des paramètres d'authentification"
+  },
+  "notificationSettingsTitle": {
+    "message": "Préférences de notification",
+    "description": "Titre de la section des paramètres de notification"
+  },
+  "aboutSection": {
+    "message": "À propos",
+    "description": "Titre de la section à propos"
+  },
+  "checkingAuth": {
+    "message": "Vérification...",
+    "description": "Vérification de l'état d'authentification"
+  },
+  "forceReauth": {
+    "message": "Ré-authentifier",
+    "description": "Bouton de ré-authentification forcée"
+  },
+  "clearAuth": {
+    "message": "Déconnexion",
+    "description": "Bouton d'effacement de l'authentification"
+  },
+  "warningTimeLabel": {
+    "message": "Temps d'alerte (minutes)",
+    "description": "Libellé de saisie du temps d'alerte"
+  },
+  "soundNotifications": {
+    "message": "Jouer un son de notification",
+    "description": "Libellé de case à cocher pour les notifications sonores"
+  },
+  "persistentNotifications": {
+    "message": "Garder les notifications jusqu'à fermeture",
+    "description": "Libellé de case à cocher pour les notifications persistantes"
+  },
+  "version": {
+    "message": "Version",
+    "description": "Libellé de version"
+  },
+  "author": {
+    "message": "Auteur",
+    "description": "Libellé d'auteur"
+  },
+  "features": {
+    "message": "Fonctionnalités",
+    "description": "Libellé des fonctionnalités"
+  },
+  "featuresText": {
+    "message": "Activation, extension et notifications d'expiration de rôles",
+    "description": "Texte de description des fonctionnalités"
+  },
+  "activateAll": {
+    "message": "Activer Tout (1h)",
+    "description": "Bouton d'activation de tous les rôles éligibles"
+  },
+  "extendAll": {
+    "message": "Prolonger Tout (2h)",
+    "description": "Bouton de prolongation de tous les rôles actifs"
+  },
+  "quickExtendAll": {
+    "message": "Extension Rapide (30min)",
+    "description": "Bouton d'extension rapide"
+  },
+  "emergencyExtend": {
+    "message": "Extension d'Urgence (4h)",
+    "description": "Bouton d'extension d'urgence"
   },
   "noEligibleRoles": {
     "message": "Aucun rôle éligible disponible",
@@ -226,6 +362,58 @@
   "languageChanged": {
     "message": "Langue changée avec succès",
     "description": "Confirmation du changement de langue"
+  },
+  "authenticationSuccessful": {
+    "message": "Authentification réussie",
+    "description": "Message de succès d'authentification"
+  },
+  "authenticationFailed": {
+    "message": "Échec de l'authentification",
+    "description": "Message d'échec d'authentification"
+  },
+  "signedOut": {
+    "message": "Déconnexion réussie",
+    "description": "Message de succès de déconnexion"
+  },
+  "signOutFailed": {
+    "message": "Échec de la déconnexion",
+    "description": "Message d'échec de déconnexion"
+  },
+  "confirmBulkActivate": {
+    "message": "Activer $COUNT$ rôles pour 1 heure ?",
+    "description": "Confirmation d'activation en lot",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "confirmBulkExtend": {
+    "message": "Prolonger $COUNT$ rôles pour 2 heures ?",
+    "description": "Confirmation de prolongation en lot",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "confirmEmergencyExtend": {
+    "message": "Extension d'urgence de tous les rôles actifs pour 4 heures ?",
+    "description": "Confirmation d'extension d'urgence"
+  },
+  "emergencyExtensionComplete": {
+    "message": "Extension d'urgence terminée pour tous les rôles",
+    "description": "Message de fin d'extension d'urgence"
+  },
+  "bulkActivationComplete": {
+    "message": "Activation en lot terminée",
+    "description": "Message de fin d'activation en lot"
+  },
+  "bulkExtensionComplete": {
+    "message": "Prolongation en lot terminée",
+    "description": "Message de fin de prolongation en lot"
   },
   "serviceNotResponding": {
     "message": "Le service d'extension ne répond pas. Essayez de recharger l'extension.",

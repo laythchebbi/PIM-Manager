@@ -1,5 +1,5 @@
 // Enhanced Azure PIM Helper Background Script
-// Simplified version using implicit flow to avoid PKCE issues - with i18n support
+// With Role Expiration Notifications
 
 console.log('Background script loading...');
 
@@ -26,6 +26,355 @@ const CONFIG = {
 };
 
 console.log('Configuration loaded:', { CLIENT_ID: CONFIG.CLIENT_ID, REDIRECT_URI: CONFIG.REDIRECT_URI });
+
+// Notification Manager for Role Expiration Warnings
+class NotificationManager {
+  constructor() {
+    this.activeNotifications = new Map();
+    this.monitoringInterval = null;
+    this.checkIntervalMinutes = 1; // Check every minute
+    this.warningTimeMinutes = 15; // Warn 15 minutes before expiration
+    
+    console.log('NotificationManager initialized');
+    this.setupNotificationPermissions();
+  }
+
+  async setupNotificationPermissions() {
+    try {
+      // Check if we have notification permission
+      const permission = await chrome.notifications.getPermissionLevel();
+      console.log('Notification permission level:', permission);
+      
+      if (permission !== 'granted') {
+        console.warn('Notification permission not granted');
+      }
+    } catch (error) {
+      console.error('Error checking notification permissions:', error);
+    }
+  }
+
+  startMonitoring(graphClient) {
+    console.log('🔔 Starting role expiration monitoring...');
+    
+    // Clear any existing interval
+    if (this.monitoringInterval) {
+      clearInterval(this.monitoringInterval);
+    }
+
+    // Start monitoring interval
+    this.monitoringInterval = setInterval(async () => {
+      try {
+        await this.checkRoleExpirations(graphClient);
+      } catch (error) {
+        console.error('Error during role expiration check:', error);
+      }
+    }, this.checkIntervalMinutes * 60 * 1000);
+
+    // Also check immediately
+    this.checkRoleExpirations(graphClient);
+  }
+
+  stopMonitoring() {
+    console.log('🔔 Stopping role expiration monitoring...');
+    if (this.monitoringInterval) {
+      clearInterval(this.monitoringInterval);
+      this.monitoringInterval = null;
+    }
+    this.clearAllNotifications();
+  }
+
+  async checkRoleExpirations(graphClient) {
+    try {
+      console.log('🔍 Checking for role expirations...');
+      
+      // Get active roles
+      const activeRolesResponse = await graphClient.listActiveRoles();
+      const activeRoles = activeRolesResponse.value || [];
+      
+      const now = new Date();
+      const warningThreshold = new Date(now.getTime() + (this.warningTimeMinutes * 60 * 1000));
+      
+      console.log(`📅 Current time: ${now.toISOString()}`);
+      console.log(`⚠️ Warning threshold: ${warningThreshold.toISOString()}`);
+      
+      for (const role of activeRoles) {
+        await this.checkSingleRoleExpiration(role, now, warningThreshold);
+      }
+
+      // Clean up notifications for roles that are no longer active
+      this.cleanupInactiveNotifications(activeRoles);
+      
+    } catch (error) {
+      console.error('Error checking role expirations:', error);
+    }
+  }
+
+  async checkSingleRoleExpiration(role, now, warningThreshold) {
+    const roleId = role.roleDefinitionId;
+    const roleName = role.roleName || 'Unknown Role';
+    
+    // Get expiration time
+    const expirationTime = this.getRoleExpirationTime(role);
+    
+    if (!expirationTime) {
+      console.log(`⏰ No expiration time found for role: ${roleName}`);
+      return;
+    }
+
+    const expirationDate = new Date(expirationTime);
+    const timeUntilExpiration = expirationDate.getTime() - now.getTime();
+    const minutesUntilExpiration = Math.floor(timeUntilExpiration / (1000 * 60));
+    
+    console.log(`⏰ Role "${roleName}" expires in ${minutesUntilExpiration} minutes (${expirationDate.toISOString()})`);
+
+    // Check if role is expiring within warning threshold
+    if (expirationDate <= warningThreshold && expirationDate > now) {
+      await this.createExpirationWarning(role, expirationDate, minutesUntilExpiration);
+    } else if (expirationDate <= now) {
+      // Role has already expired
+      await this.createExpiredNotification(role);
+    } else {
+      // Role is not close to expiring, clear any existing notification
+      this.clearNotificationForRole(roleId);
+    }
+  }
+
+  getRoleExpirationTime(role) {
+    // Try different possible locations for expiration time
+    if (role.scheduleInfo?.expiration?.endDateTime) {
+      return role.scheduleInfo.expiration.endDateTime;
+    }
+    if (role.endDateTime) {
+      return role.endDateTime;
+    }
+    if (role.expiration?.endDateTime) {
+      return role.expiration.endDateTime;
+    }
+    return null;
+  }
+
+  async createExpirationWarning(role, expirationDate, minutesUntilExpiration) {
+    const roleId = role.roleDefinitionId;
+    const roleName = role.roleName || 'Unknown Role';
+    const notificationId = `expiration_${roleId}`;
+    
+    // Don't create duplicate notifications
+    if (this.activeNotifications.has(notificationId)) {
+      console.log(`🔔 Notification already exists for role: ${roleName}`);
+      return;
+    }
+
+    const timeText = minutesUntilExpiration === 1 ? '1 minute' : `${minutesUntilExpiration} minutes`;
+    
+    const notificationOptions = {
+      type: 'basic',
+      iconUrl: 'icons/icon-48.png', // Make sure you have this icon
+      title: '⚠️ Azure Role Expiring Soon',
+      message: `Your "${roleName}" role will expire in ${timeText}`,
+      buttons: [
+        { title: 'Extend Role' },
+        { title: 'Dismiss' }
+      ],
+      requireInteraction: true, // Keep notification until user interacts
+      priority: 2 // High priority
+    };
+
+    try {
+      await chrome.notifications.create(notificationId, notificationOptions);
+      
+      // Store notification info
+      this.activeNotifications.set(notificationId, {
+        role: role,
+        type: 'expiration_warning',
+        createdAt: new Date(),
+        expirationDate: expirationDate
+      });
+      
+      console.log(`🔔 Created expiration warning for role: ${roleName}`);
+    } catch (error) {
+      console.error('Error creating notification:', error);
+    }
+  }
+
+  async createExpiredNotification(role) {
+    const roleId = role.roleDefinitionId;
+    const roleName = role.roleName || 'Unknown Role';
+    const notificationId = `expired_${roleId}`;
+    
+    // Don't create duplicate notifications
+    if (this.activeNotifications.has(notificationId)) {
+      return;
+    }
+
+    const notificationOptions = {
+      type: 'basic',
+      iconUrl: 'icons/icon-48.png',
+      title: '🚨 Azure Role Expired',
+      message: `Your "${roleName}" role has expired`,
+      buttons: [
+        { title: 'Reactivate' },
+        { title: 'Dismiss' }
+      ],
+      requireInteraction: true,
+      priority: 2
+    };
+
+    try {
+      await chrome.notifications.create(notificationId, notificationOptions);
+      
+      this.activeNotifications.set(notificationId, {
+        role: role,
+        type: 'expired',
+        createdAt: new Date()
+      });
+      
+      console.log(`🔔 Created expired notification for role: ${roleName}`);
+    } catch (error) {
+      console.error('Error creating expired notification:', error);
+    }
+  }
+
+  clearNotificationForRole(roleId) {
+    const notificationIds = [`expiration_${roleId}`, `expired_${roleId}`];
+    
+    for (const notificationId of notificationIds) {
+      if (this.activeNotifications.has(notificationId)) {
+        chrome.notifications.clear(notificationId);
+        this.activeNotifications.delete(notificationId);
+        console.log(`🗑️ Cleared notification: ${notificationId}`);
+      }
+    }
+  }
+
+  cleanupInactiveNotifications(activeRoles) {
+    const activeRoleIds = new Set(activeRoles.map(role => role.roleDefinitionId));
+    
+    for (const [notificationId, notificationInfo] of this.activeNotifications) {
+      const roleId = notificationInfo.role.roleDefinitionId;
+      
+      if (!activeRoleIds.has(roleId)) {
+        chrome.notifications.clear(notificationId);
+        this.activeNotifications.delete(notificationId);
+        console.log(`🗑️ Cleaned up notification for inactive role: ${notificationInfo.role.roleName}`);
+      }
+    }
+  }
+
+  clearAllNotifications() {
+    for (const notificationId of this.activeNotifications.keys()) {
+      chrome.notifications.clear(notificationId);
+    }
+    this.activeNotifications.clear();
+    console.log('🗑️ Cleared all notifications');
+  }
+
+  // Handle notification button clicks
+  handleNotificationClick(notificationId, buttonIndex, pimManager) {
+    const notificationInfo = this.activeNotifications.get(notificationId);
+    
+    if (!notificationInfo) {
+      console.log('Notification info not found for:', notificationId);
+      return;
+    }
+
+    const role = notificationInfo.role;
+    console.log(`🖱️ Notification button clicked: ${notificationId}, button: ${buttonIndex}`);
+
+    if (buttonIndex === 0) {
+      // First button clicked
+      if (notificationInfo.type === 'expiration_warning') {
+        // Extend role
+        this.handleExtendRole(role, pimManager);
+      } else if (notificationInfo.type === 'expired') {
+        // Reactivate role
+        this.handleReactivateRole(role, pimManager);
+      }
+    } else if (buttonIndex === 1) {
+      // Dismiss button clicked
+      this.clearNotificationForRole(role.roleDefinitionId);
+    }
+  }
+
+  async handleExtendRole(role, pimManager) {
+    try {
+      console.log(`🔄 Extending role: ${role.roleName}`);
+      
+      const result = await pimManager.graphClient.extendRole(
+        role,
+        'PT2H', // Extend by 2 hours
+        'Extension requested via notification'
+      );
+      
+      // Show success notification
+      await chrome.notifications.create(`extend_success_${Date.now()}`, {
+        type: 'basic',
+        iconUrl: 'icons/icon-48.png',
+        title: '✅ Role Extended',
+        message: `Successfully extended "${role.roleName}" role`,
+        priority: 1
+      });
+      
+      // Clear the expiration warning
+      this.clearNotificationForRole(role.roleDefinitionId);
+      
+    } catch (error) {
+      console.error('Error extending role:', error);
+      
+      // Show error notification
+      await chrome.notifications.create(`extend_error_${Date.now()}`, {
+        type: 'basic',
+        iconUrl: 'icons/icon-48.png',
+        title: '❌ Extension Failed',
+        message: `Failed to extend "${role.roleName}": ${error.message}`,
+        priority: 2
+      });
+    }
+  }
+
+  async handleReactivateRole(role, pimManager) {
+    try {
+      console.log(`🔄 Reactivating role: ${role.roleName}`);
+      
+      // Find the corresponding eligible role
+      const eligibleRoles = await pimManager.graphClient.listEligibleRoles();
+      const eligibleRole = eligibleRoles.value.find(er => er.roleDefinitionId === role.roleDefinitionId);
+      
+      if (!eligibleRole) {
+        throw new Error('Eligible role not found');
+      }
+      
+      const result = await pimManager.graphClient.activateRole(
+        eligibleRole,
+        'PT8H', // Activate for 8 hours
+        'Reactivation requested via notification'
+      );
+      
+      // Show success notification
+      await chrome.notifications.create(`reactivate_success_${Date.now()}`, {
+        type: 'basic',
+        iconUrl: 'icons/icon-48.png',
+        title: '✅ Role Reactivated',
+        message: `Successfully reactivated "${role.roleName}" role`,
+        priority: 1
+      });
+      
+      // Clear the expired notification
+      this.clearNotificationForRole(role.roleDefinitionId);
+      
+    } catch (error) {
+      console.error('Error reactivating role:', error);
+      
+      // Show error notification
+      await chrome.notifications.create(`reactivate_error_${Date.now()}`, {
+        type: 'basic',
+        iconUrl: 'icons/icon-48.png',
+        title: '❌ Reactivation Failed',
+        message: `Failed to reactivate "${role.roleName}": ${error.message}`,
+        priority: 2
+      });
+    }
+  }
+}
 
 // Token management - Simplified approach using Chrome Identity API
 class TokenManager {
@@ -285,74 +634,6 @@ class GraphAPIClient {
     // Enrich roles with names first
     const enrichedRoles = await this.enrichRolesWithNames(data.value);
     
-    // Check justification requirements using PIM policies
-    const rolesWithJustificationInfo = await Promise.all(
-      enrichedRoles.map(async (role) => {
-        let requiresJustification = false;
-        let detectionMethod = 'policy_check';
-        
-        console.log(`🔍 Checking justification requirement for "${role.roleName}"`);
-        
-        try {
-          // Try to get the role management policy for this role
-          const policyResponse = await this.checkRoleJustificationRequirement(
-            role.roleDefinitionId, 
-            role.directoryScopeId
-          );
-          
-          if (policyResponse.success) {
-            requiresJustification = policyResponse.requiresJustification;
-            detectionMethod = 'policy_api';
-            console.log(`📋 Policy check for "${role.roleName}": requiresJustification=${requiresJustification}`);
-          } else {
-            // Fallback to pattern-based detection if policy check fails
-            requiresJustification = this.detectJustificationByPattern(role.roleName);
-            detectionMethod = 'pattern_fallback';
-            console.log(`🔍 Pattern fallback for "${role.roleName}": requiresJustification=${requiresJustification}`);
-          }
-          
-        } catch (error) {
-          console.warn(`⚠️ Error checking policy for "${role.roleName}":`, error);
-          // Fallback to pattern-based detection
-          requiresJustification = this.detectJustificationByPattern(role.roleName);
-          detectionMethod = 'pattern_fallback';
-        }
-        
-        console.log(`🎯 Final result for "${role.roleName}": requiresJustification=${requiresJustification}, method=${detectionMethod}`);
-        
-        return {
-          ...role,
-          requiresJustification,
-          detectionMethod
-        };
-      })
-    );
-
-    const detectionSummary = rolesWithJustificationInfo.map(r => ({
-      name: r.roleName,
-      requiresJustification: r.requiresJustification,
-      method: r.detectionMethod
-    }));
-    
-    console.log(`📊 Justification detection summary:`, detectionSummary);
-    console.log(`✅ Loaded ${rolesWithJustificationInfo.length} eligible roles with policy-based justification detection`);
-    
-    return { value: rolesWithJustificationInfo };
-  }
-
-  async listEligibleRoles() {
-    console.log('Loading eligible roles...');
-    await this.preloadRoleDefinitions();
-    
-    const data = await this.makeRequest(
-      "/roleManagement/directory/roleEligibilityScheduleInstances/filterByCurrentUser(on='principal')"
-    );
-
-    console.log('🔍 Raw eligibility data:', data);
-
-    // Enrich roles with names first
-    const enrichedRoles = await this.enrichRolesWithNames(data.value);
-    
     // Query actual PIM policies for justification requirements
     const rolesWithJustificationInfo = await Promise.all(
       enrichedRoles.map(async (role) => {
@@ -462,51 +743,6 @@ class GraphAPIClient {
       console.warn(`⚠️ Method 1 failed:`, error);
     }
 
-    // Method 2: Try querying all policies and find matching ones
-    try {
-      console.log(`📡 Method 2: Querying all policies...`);
-      const allPoliciesEndpoint = `/policies/roleManagementPolicies?$expand=rules&$top=100`;
-      
-      console.log(`📡 All policies URL: ${allPoliciesEndpoint}`);
-      const allPoliciesResponse = await this.makeRequest(allPoliciesEndpoint);
-      
-      console.log(`📋 All policies response: Found ${allPoliciesResponse.value?.length || 0} policies`);
-      
-      if (allPoliciesResponse.value && allPoliciesResponse.value.length > 0) {
-        for (const policy of allPoliciesResponse.value) {
-          if (policy.roleDefinitionId === roleDefinitionId) {
-            console.log(`📋 Found matching policy: ${policy.displayName || policy.id}`);
-            if (policy.rules) {
-              const result = this.analyzeRulesForJustification(policy.rules);
-              if (result !== null) {
-                console.log(`✅ Method 2 succeeded: ${result}`);
-                return result;
-              }
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.warn(`⚠️ Method 2 failed:`, error);
-    }
-
-    // Method 3: Check if we have the necessary permissions
-    try {
-      console.log(`📡 Method 3: Testing API permissions...`);
-      const testEndpoint = `/policies/roleManagementPolicies?$top=1`;
-      
-      const testResponse = await this.makeRequest(testEndpoint);
-      console.log(`📋 Permission test result:`, testResponse);
-      
-      if (testResponse.error) {
-        console.log(`❌ Permission issue detected: ${testResponse.error.message}`);
-        console.log(`🔧 Required permissions: Policy.Read.All or RoleManagementPolicy.Read.Directory`);
-      }
-    } catch (error) {
-      console.warn(`⚠️ Permission test failed:`, error);
-      console.log(`🔧 This might be a permissions issue. Required: Policy.Read.All or RoleManagementPolicy.Read.Directory`);
-    }
-
     // Final fallback: Conservative pattern matching
     console.log(`🔄 All methods failed, using conservative fallback...`);
     const roleName = this.roleDefinitionCache.get(roleDefinitionId)?.displayName || '';
@@ -613,231 +849,6 @@ class GraphAPIClient {
     return false;
   }
 
-  // Method 1: Check role management policy assignments
-  async checkRoleManagementPolicies(roleDefinitionId, directoryScopeId) {
-    try {
-      console.log(`🔍 Method 1: Checking policy assignments for role ${roleDefinitionId}`);
-      
-      // Try the policy assignments endpoint
-      const policyEndpoint = `/policies/roleManagementPolicyAssignments?$filter=scopeId eq '${directoryScopeId || '/'}' and scopeType eq 'DirectoryRole' and roleDefinitionId eq '${roleDefinitionId}'&$expand=policy($expand=rules)`;
-      
-      console.log(`📡 Calling: ${policyEndpoint}`);
-      const policyData = await this.makeRequest(policyEndpoint);
-      
-      if (policyData.value && policyData.value.length > 0) {
-        const assignment = policyData.value[0];
-        console.log(`📋 Found policy assignment:`, assignment.id);
-        
-        if (assignment.policy && assignment.policy.rules) {
-          const requiresJustification = this.analyzeRules(assignment.policy.rules);
-          console.log(`✅ Policy analysis complete: requiresJustification=${requiresJustification}`);
-          return { success: true, requiresJustification };
-        }
-      }
-      
-      return { success: false, requiresJustification: false };
-    } catch (error) {
-      console.warn(`⚠️ Method 1 failed:`, error.message);
-      return { success: false, requiresJustification: false };
-    }
-  }
-
-  // Method 2: Try alternative policy endpoint
-  async checkAlternativePolicyEndpoint(roleDefinitionId) {
-    try {
-      console.log(`🔍 Method 2: Checking alternative policy endpoint for role ${roleDefinitionId}`);
-      
-      const policyEndpoint = `/policies/roleManagementPolicies?$filter=roleDefinitionId eq '${roleDefinitionId}'&$expand=rules`;
-      
-      console.log(`📡 Calling: ${policyEndpoint}`);
-      const policyData = await this.makeRequest(policyEndpoint);
-      
-      if (policyData.value && policyData.value.length > 0) {
-        for (const policy of policyData.value) {
-          console.log(`📋 Found policy:`, policy.displayName);
-          
-          if (policy.rules) {
-            const requiresJustification = this.analyzeRules(policy.rules);
-            if (requiresJustification) {
-              console.log(`✅ Alternative policy analysis: requiresJustification=true`);
-              return { success: true, requiresJustification: true };
-            }
-          }
-        }
-        
-        console.log(`❌ Alternative policy analysis: requiresJustification=false`);
-        return { success: true, requiresJustification: false };
-      }
-      
-      return { success: false, requiresJustification: false };
-    } catch (error) {
-      console.warn(`⚠️ Method 2 failed:`, error.message);
-      return { success: false, requiresJustification: false };
-    }
-  }
-
-  // Method 3: Check role definition properties
-  async checkRoleDefinitionProperties(roleDefinitionId) {
-    try {
-      console.log(`🔍 Method 3: Checking role definition properties for ${roleDefinitionId}`);
-      
-      const roleDefEndpoint = `/roleManagement/directory/roleDefinitions/${roleDefinitionId}`;
-      
-      console.log(`📡 Calling: ${roleDefEndpoint}`);
-      const roleData = await this.makeRequest(roleDefEndpoint);
-      
-      if (roleData) {
-        console.log(`📋 Role definition found:`, roleData.displayName);
-        
-        // Check if role has high-risk permissions that typically require justification
-        const hasHighRiskPermissions = this.checkHighRiskPermissions(roleData);
-        
-        console.log(`🔒 High risk permissions check: ${hasHighRiskPermissions}`);
-        return { success: true, requiresJustification: hasHighRiskPermissions };
-      }
-      
-      return { success: false, requiresJustification: false };
-    } catch (error) {
-      console.warn(`⚠️ Method 3 failed:`, error.message);
-      return { success: false, requiresJustification: false };
-    }
-  }
-
-  // Analyze policy rules for justification requirements
-  analyzeRules(rules) {
-    console.log(`🔍 Analyzing ${rules.length} policy rules`);
-    
-    for (const rule of rules) {
-      console.log(`📋 Checking rule type: ${rule['@odata.type']}`);
-      
-      // Check enablement rules
-      if (rule['@odata.type'] === '#microsoft.graph.unifiedRoleManagementPolicyEnablementRule') {
-        console.log(`📋 Enablement rule found, enabled rules:`, rule.enabledRules);
-        if (rule.enabledRules && rule.enabledRules.includes('Justification')) {
-          console.log(`✅ Justification requirement found in enablement rule!`);
-          return true;
-        }
-      }
-      
-      // Check approval rules
-      if (rule['@odata.type'] === '#microsoft.graph.unifiedRoleManagementPolicyApprovalRule') {
-        console.log(`📋 Approval rule found:`, rule.setting);
-        if (rule.setting && rule.setting.isApprovalRequired) {
-          console.log(`✅ Approval requirement found!`);
-          return true;
-        }
-      }
-      
-      // Check authentication context rules
-      if (rule['@odata.type'] === '#microsoft.graph.unifiedRoleManagementPolicyAuthenticationContextRule') {
-        console.log(`📋 Authentication context rule found`);
-        if (rule.isEnabled) {
-          console.log(`✅ Authentication context required!`);
-          return true;
-        }
-      }
-    }
-    
-    console.log(`❌ No justification requirements found in rules`);
-    return false;
-  }
-
-  // Check if role has high-risk permissions
-  checkHighRiskPermissions(roleDefinition) {
-    if (!roleDefinition.rolePermissions || !roleDefinition.rolePermissions[0]) {
-      return false;
-    }
-    
-    const permissions = roleDefinition.rolePermissions[0];
-    const allowedActions = permissions.allowedResourceActions || [];
-    
-    // High-risk actions that typically require justification
-    const highRiskActions = [
-      'microsoft.directory/users/delete',
-      'microsoft.directory/groups/delete',
-      'microsoft.directory/applications/delete',
-      'microsoft.directory/servicePrincipals/delete',
-      'microsoft.directory/roleDefinitions/allProperties/allTasks',
-      'microsoft.directory/roleAssignments/allProperties/allTasks',
-      'microsoft.directory/policies/allProperties/allTasks',
-      'microsoft.directory/conditionalAccessPolicies/allProperties/allTasks',
-      'microsoft.directory/privilegedIdentityManagement/allProperties/allTasks'
-    ];
-    
-    const hasHighRisk = allowedActions.some(action => 
-      highRiskActions.some(riskAction => action.includes(riskAction))
-    );
-    
-    console.log(`🔒 High risk permissions analysis: ${hasHighRisk}`);
-    return hasHighRisk;
-  }
-
-  // Enhanced pattern-based detection with more roles
-  detectJustificationByEnhancedPattern(roleName) {
-    // Tier 1: Always require justification (highest privilege)
-    const tier1Roles = [
-      'Global Administrator',
-      'Privileged Role Administrator',
-      'Security Administrator',
-      'Privileged Authentication Administrator'
-    ];
-    
-    // Tier 2: Usually require justification (high privilege)
-    const tier2Roles = [
-      'Application Administrator',
-      'Authentication Administrator',
-      'Azure AD Joined Device Local Administrator',
-      'Cloud Application Administrator',
-      'Conditional Access Administrator',
-      'Exchange Administrator',
-      'User Administrator',
-      'Groups Administrator',
-      'Intune Administrator',
-      'SharePoint Administrator',
-      'Teams Administrator',
-      'Compliance Administrator',
-      'Privileged Access Administrator',
-      'Identity Governance Administrator',
-      'Partner Tier2 Support',
-      'Directory Synchronization Accounts',
-      'External Identity Provider Administrator',
-      'Hybrid Identity Administrator'
-    ];
-    
-    // Tier 3: Sometimes require justification (medium privilege)
-    const tier3Roles = [
-      'Security Reader',
-      'Reports Reader',
-      'Message Center Reader',
-      'Directory Readers',
-      'Guest Inviter',
-      'License Administrator',
-      'Password Administrator',
-      'Helpdesk Administrator',
-      'Service Support Administrator',
-      'Billing Administrator'
-    ];
-    
-    // Check tiers
-    if (tier1Roles.some(role => roleName.includes(role))) {
-      console.log(`🔴 Tier 1 role detected: ${roleName} - REQUIRES justification`);
-      return true;
-    }
-    
-    if (tier2Roles.some(role => roleName.includes(role))) {
-      console.log(`🟡 Tier 2 role detected: ${roleName} - LIKELY requires justification`);
-      return true;
-    }
-    
-    if (tier3Roles.some(role => roleName.includes(role))) {
-      console.log(`🟢 Tier 3 role detected: ${roleName} - MAY require justification`);
-      return false; // Conservative: assume no justification for lower privilege roles
-    }
-    
-    console.log(`⚪ Unknown role: ${roleName} - assuming no justification required`);
-    return false;
-  }
-
   async listActiveRoles() {
     console.log('Loading active roles...');
     await this.preloadRoleDefinitions();
@@ -877,7 +888,7 @@ class GraphAPIClient {
     console.log('Activating role with eligibility:', eligibility);
     
     // Use localized default justification if none provided
-    const defaultJustification = justification || getMessage('defaultJustification');
+    const defaultJustification = justification || getMessage('defaultJustification') || 'Role activation requested';
     
     let principalId = eligibility.principalId;
     if (!principalId) {
@@ -924,7 +935,7 @@ class GraphAPIClient {
 
   async extendRole(assignment, additionalDuration = 'PT2H', justification = null) {
     // Use localized default justification if none provided
-    const defaultJustification = justification || getMessage('defaultJustification');
+    const defaultJustification = justification || getMessage('defaultJustification') || 'Role extension requested';
     
     const currentExpiry = new Date(assignment.scheduleInfo?.expiration?.endDateTime || Date.now());
     const newExpiry = new Date(currentExpiry.getTime() + (2 * 60 * 60 * 1000));
@@ -962,6 +973,7 @@ class AzurePIMManager {
     console.log('AzurePIMManager initializing...');
     this.tokenManager = new TokenManager();
     this.graphClient = new GraphAPIClient(this.tokenManager);
+    this.notificationManager = new NotificationManager();
     this.init();
   }
 
@@ -976,6 +988,23 @@ class AzurePIMManager {
         this.handleMessage(message, sender, sendResponse);
         return true; // Keep message channel open for async response
       });
+
+      // Set up notification listeners
+      chrome.notifications.onClicked.addListener((notificationId) => {
+        console.log('Notification clicked:', notificationId);
+        this.notificationManager.clearNotificationForRole(notificationId.replace(/^(expiration_|expired_)/, ''));
+      });
+
+      chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) => {
+        console.log('Notification button clicked:', notificationId, buttonIndex);
+        this.notificationManager.handleNotificationClick(notificationId, buttonIndex, this);
+      });
+
+      // Start monitoring if we have a valid token
+      if (!this.tokenManager.isTokenExpired()) {
+        console.log('🔔 Auto-starting notification monitoring...');
+        this.notificationManager.startMonitoring(this.graphClient);
+      }
 
       console.log('Azure PIM Manager initialized successfully');
     } catch (error) {
@@ -1010,6 +1039,8 @@ class AzurePIMManager {
             message.duration,
             message.justification
           );
+          // Restart monitoring after role activation
+          this.notificationManager.startMonitoring(this.graphClient);
           sendResponse({ success: true, result: activationResult });
           break;
 
@@ -1019,6 +1050,8 @@ class AzurePIMManager {
             message.additionalDuration,
             message.justification
           );
+          // Restart monitoring after role extension
+          this.notificationManager.startMonitoring(this.graphClient);
           sendResponse({ success: true, result: extensionResult });
           break;
 
@@ -1026,6 +1059,7 @@ class AzurePIMManager {
           await this.tokenManager.clearTokens();
           await chrome.storage.local.clear(); // Clear everything
           this.graphClient.clearCache(); // Clear API cache too
+          this.notificationManager.stopMonitoring(); // Stop notifications
           sendResponse({ success: true });
           break;
 
@@ -1033,12 +1067,36 @@ class AzurePIMManager {
           await this.tokenManager.clearTokens();
           await chrome.storage.local.clear();
           this.graphClient.clearCache();
+          this.notificationManager.stopMonitoring();
           try {
             await this.tokenManager.authenticate();
-            sendResponse({ success: true, message: getMessage('authenticationRequired') });
+            this.notificationManager.startMonitoring(this.graphClient);
+            sendResponse({ success: true, message: getMessage('authenticationRequired') || 'Authentication successful' });
           } catch (error) {
             sendResponse({ success: false, error: error.message });
           }
+          break;
+
+        case 'startNotifications':
+          console.log('🔔 Starting notifications via message...');
+          this.notificationManager.startMonitoring(this.graphClient);
+          sendResponse({ success: true, message: 'Notification monitoring started' });
+          break;
+
+        case 'stopNotifications':
+          console.log('🔔 Stopping notifications via message...');
+          this.notificationManager.stopMonitoring();
+          sendResponse({ success: true, message: 'Notification monitoring stopped' });
+          break;
+
+        case 'getNotificationStatus':
+          const isMonitoring = this.notificationManager.monitoringInterval !== null;
+          const activeNotificationCount = this.notificationManager.activeNotifications.size;
+          sendResponse({ 
+            success: true, 
+            monitoring: isMonitoring, 
+            activeNotifications: activeNotificationCount 
+          });
           break;
 
         default:
@@ -1075,4 +1133,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 console.log('Initializing PIM Manager...');
 const pimManager = new AzurePIMManager();
 
-console.log('Background script loaded successfully');
+console.log('Background script loaded successfully with notification support');
