@@ -157,7 +157,7 @@ The extension supports both **English** and **French** with seamless switching:
 ### 🔔 Notification Settings Panel ⭐ *NEW!*
 *Comprehensive notification control and preferences*
 
-![Notification Settings](images/notification-panel.png)
+![Notification Settings](images/img6.png)
 
 ### 🌐 Multi-Language Support
 *Seamless language switching with flag icons*
@@ -172,7 +172,7 @@ The extension supports both **English** and **French** with seamless switching:
 ### ⚙️ Enhanced Settings Tab ⭐ *NEW!*
 *Complete control over authentication and preferences*
 
-![Settings Tab](images/settings-tab.png)
+![Settings Tab](images/img7.png)
 
 ### 🌙 Dark Theme with Notifications
 *Beautiful dark mode with notification support*
