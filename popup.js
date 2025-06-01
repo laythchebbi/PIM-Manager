@@ -1,4 +1,4 @@
-// Azure PIM Helper - Enhanced Chrome Extension Popup
+// PIM-Manager - Enhanced Chrome Extension Popup
 // Version 2.1 with notification support and improved UI
 
 class AzurePIMHelper {
@@ -244,12 +244,12 @@ class AzurePIMHelper {
     const messages = {
       en: {
         // Header and Navigation
-        headerTitle: { message: "Azure PIM Helper" },
+        headerTitle: { message: "PIM-Manager" },
         headerSubtitle: { message: "Manage your privileged role lifecycle" },
         refreshTooltip: { message: "Refresh roles" },
         themeTooltip: { message: "Toggle theme" },
         languageTooltip: { message: "Switch language" },
-        defaultTitle: { message: "Azure PIM Helper" },
+        defaultTitle: { message: "PIM-Manager" },
         
         // Loading and Status
         loadingRoles: { message: "Loading role data..." },

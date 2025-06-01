@@ -1,6 +1,6 @@
 {
   "extName": {
-    "message": "Azure PIM Helper",
+    "message": "PIM-Manager",
     "description": "Extension name"
   },
   "extDescription": {
@@ -8,11 +8,11 @@
     "description": "Extension description"
   },
   "defaultTitle": {
-    "message": "Azure PIM Helper",
+    "message": "PIM-Manager",
     "description": "Default popup title"
   },
   "headerTitle": {
-    "message": "Azure PIM Helper",
+    "message": "PIM-Manager",
     "description": "Main header title"
   },
   "headerSubtitle": {

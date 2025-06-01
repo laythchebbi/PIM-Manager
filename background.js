@@ -1,4 +1,4 @@
-// Enhanced Azure PIM Helper Background Script
+// Enhanced PIM-Manager Background Script
 // With Role Expiration Notifications - Multi-Tenant Version
 
 console.log('Background script loading...');
@@ -1149,11 +1149,11 @@ class AzurePIMManager {
 
 // Extension lifecycle management
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('Azure PIM Helper extension installed');
+  console.log('PIM-Manager extension installed');
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  console.log('Azure PIM Helper extension starting up');
+  console.log('PIM-Manager extension starting up');
 });
 
 // Keep service worker alive

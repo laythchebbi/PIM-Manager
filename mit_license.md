@@ -22,7 +22,7 @@ SOFTWARE.
 
 ---
 
-## Additional Terms for Azure PIM Helper
+## Additional Terms for PIM-Manager
 
 ### Microsoft Integration Disclaimer
 This project integrates with Microsoft services including Microsoft Graph API and Microsoft Entra ID (formerly Azure Active Directory). Users must comply with Microsoft's terms of service and acceptable use policies when using this extension.

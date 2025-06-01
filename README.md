@@ -1,8 +1,8 @@
-# 🛡️ Azure PIM Helper
+# 🛡️ PIM-Manager
 
 <div align="center">
 
-![Azure PIM Helper Logo](https://img.shields.io/badge/Azure-PIM%20Helper-0078d4?style=for-the-badge&logo=microsoft-azure&logoColor=white)
+![PIM-Manager Logo](https://img.shields.io/badge/Azure-PIM%20Helper-0078d4?style=for-the-badge&logo=microsoft-azure&logoColor=white)
 
 **A beautiful, fast, and intuitive Chrome extension for managing Azure Privileged Identity Management roles with proactive expiration notifications and multi-tenant support**
 
@@ -227,7 +227,7 @@ The extension supports both **English** and **French** with seamless switching:
 **🔗 [Install from Chrome Web Store](https://chrome.google.com/webstore/detail/azure-pim-helper/[extension-id])**
 
 1. **One-Click Installation**
-   - Click the link above or search "Azure PIM Helper" in Chrome Web Store
+   - Click the link above or search "PIM-Manager" in Chrome Web Store
    - Click **"Add to Chrome"**
    - Confirm installation when prompted
 
@@ -793,7 +793,7 @@ If you find this project helpful, please consider:
 
 ---
 
-*Azure PIM Helper v2.1 - Simplifying privileged access management across any Microsoft Entra ID tenant.*  
+*PIM-Manager v2.1 - Simplifying privileged access management across any Microsoft Entra ID tenant.*  
 *Now with intelligent multi-language support, real-time policy detection, proactive expiration notifications, and universal multi-tenant compatibility!*
 
 ![Visitors](https://visitor-badge.laobi.icu/badge?page_id=azure-pim-helper)
