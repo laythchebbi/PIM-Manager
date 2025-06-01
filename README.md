@@ -747,7 +747,7 @@ We welcome contributions from the community! Here's how you can help:
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](/mit_license.md) file for details.
 
 ---
 
@@ -787,9 +787,9 @@ If you find this project helpful, please consider:
 
 [![GitHub](https://img.shields.io/badge/GitHub-LaythCHEBBI-181717?style=for-the-badge&logo=github)](https://github.com/laythchebbi)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Layth%20CHEBBI-0077B5?style=for-the-badge&logo=linkedin)](https://linkedin.com/in/laythchebbi)
-[![Email](https://img.shields.io/badge/Email-Contact-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:layth.chebbi@email.com)
+[![Email](https://img.shields.io/badge/Email-Contact-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:layth-chebbi@outlook.com)
 
-[Report Bug](https://github.com/laythchebbi/azure-pim-helper/issues) • [Request Feature](https://github.com/laythchebbi/azure-pim-helper/issues) • [Documentation](https://github.com/laythchebbi/azure-pim-helper/wiki)
+[Report Bug](https://github.com/laythchebbi/azure-pim-helper/) • [Request Feature](https://github.com/laythchebbi/azure-pim-helper/) • [Documentation](https://github.com/laythchebbi/azure-pim-helper/)
 
 ---
 
